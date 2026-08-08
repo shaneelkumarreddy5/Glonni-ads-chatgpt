@@ -3,7 +3,7 @@
 import {
   ArrowLeft, BadgeCheck, Bell, CheckCircle2, ChevronRight, CircleHelp, CircleUserRound, ClipboardCheck, Copy,
   Coins, CreditCard, Download, Flame, Gamepad2, Gift, History,
-  ExternalLink, Home, Landmark, LockKeyhole, Mail, MonitorPlay, Play, Search, ShieldCheck,
+  ExternalLink, Home, Landmark, LockKeyhole, Mail, Megaphone, MonitorPlay, Play, Search, ShieldCheck,
   ShoppingBag, Smartphone, Sparkles, Star, Store, Target, Timer, TrendingUp, Trophy, X,
   UserRoundPlus, Wallet, Zap,
 } from "lucide-react";
@@ -49,7 +49,7 @@ export default function App() {
       <Header activeNav={activeNav} detail={detail} onBack={() => setDetail(null)} onSearch={() => setSearchOpen(true)} onNotifications={() => setDetail("notifications")} />
       <section className="px-4 pb-4 md:px-8 lg:px-10">
         {detail ? <DetailScreen detail={detail} open={setDetail} notify={notify} /> : <>
-          {activeNav === "home" && <HomeScreen navigate={navigate} open={setDetail} />}
+          {activeNav === "home" && <HomeScreen navigate={navigate} open={setDetail} watched={watched} />}
           {activeNav === "tasks" && <TasksScreen active={taskTab} setActive={setTaskTab} watched={watched} setWatched={setWatched} notify={notify} />}
           {activeNav === "shop" && <ShopScreen notify={notify} open={setDetail} />}
           {activeNav === "games" && <GamesScreen notify={notify} />}
@@ -108,7 +108,7 @@ function GlobalSearch({ onClose, navigate, open }: { onClose: () => void; naviga
   </div>;
 }
 
-function HomeScreen({ navigate, open }: { navigate: (key: NavKey, tab?: TaskKey) => void; open: (detail:DetailKey)=>void }) {
+function HomeScreen({ navigate, open, watched }: { navigate: (key: NavKey, tab?: TaskKey) => void; open: (detail:DetailKey)=>void; watched:number }) {
   const shortcuts = [
     { label: "Tasks", icon: ClipboardCheck, color: "bg-violet-100 text-violet-600", action: () => navigate("tasks") },
     { label: "Shop & Earn", icon: ShoppingBag, color: "bg-pink-100 text-pink-600", action: () => navigate("shop") },
@@ -117,13 +117,26 @@ function HomeScreen({ navigate, open }: { navigate: (key: NavKey, tab?: TaskKey)
     { label: "Surveys", icon: ClipboardCheck, color: "bg-emerald-100 text-emerald-600", action: () => navigate("tasks", "surveys") },
     { label: "Daily Bonus", icon: Gift, color: "bg-orange-100 text-orange-600", action: () => open("bonus") },
   ];
-  return <div className="space-y-5">
+  const opportunities = [
+    { title:"Watch a short ad", meta:"30 sec · Instant reward", reward:"₹0.80", icon:MonitorPlay, color:"bg-violet-100 text-violet-600", action:()=>navigate("tasks","watch") },
+    { title:"Shopping habits", meta:"Survey · Around 8 min", reward:"₹12", icon:ClipboardCheck, color:"bg-emerald-100 text-emerald-600", action:()=>navigate("tasks","surveys") },
+    { title:"Pocket Budget", meta:"Install and register", reward:"₹45", icon:Download, color:"bg-blue-100 text-blue-600", action:()=>navigate("tasks","downloads") },
+  ];
+  return <div className="space-y-6">
     <section className={`relative overflow-hidden rounded-[28px] bg-gradient-to-br ${purple} p-5 text-white shadow-[0_18px_40px_rgba(90,55,205,.22)] md:p-7`}>
       <div className="absolute -right-10 -top-16 h-44 w-44 rounded-full bg-white/10" /><div className="absolute -bottom-16 right-24 h-36 w-36 rounded-full bg-fuchsia-300/10" />
-      <div className="relative flex items-center justify-between gap-3"><div><p className="text-sm font-semibold text-white/75">Total balance</p><p className="mt-1 text-4xl font-black tracking-tight">₹0.00</p><div className="mt-4 flex items-center gap-2 text-sm font-bold"><Coins className="h-5 w-5 text-amber-300" fill="currentColor" /> 0 Glonni Coins</div></div><div className="grid h-24 w-24 place-items-center rounded-[28px] bg-white/12 shadow-inner"><Wallet className="h-14 w-14 text-amber-300" strokeWidth={1.6} /></div></div>
+      <div className="relative flex items-center justify-between gap-3"><div><p className="text-sm font-semibold text-white/75">Available balance</p><p className="mt-1 text-4xl font-black tracking-tight">₹0.00</p><button onClick={()=>open("wallet")} className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-2 text-xs font-extrabold transition hover:bg-white/25">View wallet <ChevronRight className="h-4 w-4" /></button></div><div className="grid h-24 w-24 place-items-center rounded-[28px] bg-white/12 shadow-inner"><Wallet className="h-14 w-14 text-amber-300" strokeWidth={1.6} /></div></div>
     </section>
     <div className="grid grid-cols-2 gap-3"><MiniStat label="Today’s earning" value="₹0.00" hint="Start your first task" icon={Zap} /><MiniStat label="This month" value="₹0.00" hint="Your progress" icon={TrendingUp} /></div>
+    <section className="rounded-[24px] border border-violet-100 bg-white p-5 shadow-[0_10px_30px_rgba(45,28,85,.05)]">
+      <div className="flex items-start justify-between gap-4"><div><span className="text-[10px] font-black tracking-[.16em] text-violet-500">TODAY’S GOAL</span><h2 className="mt-1 text-lg font-black text-[#241d34]">{watched} of 20 ads watched</h2><p className="mt-1 text-xs text-slate-500">{20-watched} ads left · Up to ₹{((20-watched)*0.8).toFixed(2)} still available</p></div><span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-amber-100 text-amber-500"><Target className="h-6 w-6" /></span></div>
+      <div className="mt-4 h-2.5 overflow-hidden rounded-full bg-violet-100"><div className={`h-full rounded-full bg-gradient-to-r ${purple}`} style={{width:`${Math.min(100,watched/20*100)}%`}} /></div>
+      <button onClick={()=>navigate("tasks","watch")} className={`mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r ${purple} py-3 text-sm font-extrabold text-white shadow-md`}><Play className="h-4 w-4" fill="currentColor" /> Continue watching</button>
+    </section>
     <section><SectionTitle title="Quick access" /><div className="grid grid-cols-3 gap-3">{shortcuts.map(({label, icon: Icon, color, action}) => <button key={label} onClick={action} className="flex min-h-28 flex-col items-center justify-center gap-3 rounded-2xl border border-[#eeebf4] bg-white p-3 text-center shadow-[0_8px_25px_rgba(30,20,60,.04)] transition hover:-translate-y-0.5 hover:shadow-md"><span className={`grid h-11 w-11 place-items-center rounded-2xl ${color}`}><Icon className="h-6 w-6" /></span><span className="text-xs font-bold text-[#292336]">{label}</span></button>)}</div></section>
+    <section><SectionTitle title="Recommended for you" side="View tasks" onSide={()=>navigate("tasks")} /><div className="overflow-hidden rounded-2xl border border-[#ece9f2] bg-white">{opportunities.map(({title,meta,reward,icon:Icon,color,action})=><button key={title} onClick={action} className="flex w-full items-center gap-3 border-b border-[#f0edf5] p-4 text-left last:border-0 hover:bg-violet-50/40"><span className={`grid h-11 w-11 shrink-0 place-items-center rounded-xl ${color}`}><Icon className="h-5 w-5" /></span><span className="min-w-0 flex-1"><b className="block text-sm text-[#282133]">{title}</b><span className="text-xs text-slate-500">{meta}</span></span><span className="text-sm font-black text-violet-600">+{reward}</span><ChevronRight className="h-4 w-4 text-slate-300" /></button>)}</div></section>
+    <section><SectionTitle title="Discover more" /><div className="grid gap-3 sm:grid-cols-2"><button onClick={()=>navigate("shop")} className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#fff1da] to-[#ffe1eb] p-5 text-left"><span className="text-[10px] font-black tracking-[.16em] text-orange-600">SHOP & EARN</span><b className="mt-2 block max-w-[13rem] text-lg leading-tight text-[#332234]">Compare prices and earn on every eligible order</b><span className="mt-4 inline-flex items-center gap-1 text-xs font-extrabold text-violet-700">Explore deals <ChevronRight className="h-4 w-4" /></span><ShoppingBag className="absolute -bottom-3 -right-2 h-24 w-24 rotate-[-10deg] text-orange-300/60" /></button><button onClick={()=>navigate("games")} className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#eae3ff] to-[#dff4ff] p-5 text-left"><span className="text-[10px] font-black tracking-[.16em] text-violet-600">FEATURED GAME</span><b className="mt-2 block max-w-[13rem] text-lg leading-tight text-[#29213a]">Complete the weekly challenge and unlock rewards</b><span className="mt-4 inline-flex items-center gap-1 text-xs font-extrabold text-violet-700">View challenge <ChevronRight className="h-4 w-4" /></span><Gamepad2 className="absolute -bottom-3 -right-2 h-24 w-24 rotate-[-8deg] text-violet-300/60" /></button></div></section>
+    <section><SectionTitle title="Announcements" /><button onClick={()=>open("notifications")} className="flex w-full items-center gap-3 rounded-2xl border border-violet-100 bg-violet-50/60 p-4 text-left"><span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-violet-600 text-white"><Megaphone className="h-5 w-5" /></span><span className="min-w-0 flex-1"><b className="block text-sm text-[#282133]">Welcome to the new Glonni Ads</b><span className="mt-0.5 block text-xs leading-5 text-slate-500">Explore tasks, compare store rewards and complete game missions.</span></span><ChevronRight className="h-5 w-5 text-violet-400" /></button></section>
     <section className="rounded-2xl border border-orange-100 bg-gradient-to-r from-orange-50 to-rose-50 p-4"><div className="flex items-center gap-2 text-sm font-extrabold text-orange-700"><Flame className="h-5 w-5" fill="currentColor" /> Start your 7-day streak</div><p className="mt-1 text-xs text-slate-600">Complete one task today and keep coming back.</p><div className="mt-4 grid grid-cols-7 gap-2">{["M","T","W","T","F","S","S"].map((d,index) => <div key={`${d}${index}`} className="text-center"><span className={`mx-auto grid h-8 w-8 place-items-center rounded-full ${index === 0 ? "bg-orange-500 text-white" : "bg-white text-orange-400"}`}><Flame className="h-4 w-4" /></span><span className="mt-1 block text-[10px] font-bold text-slate-500">{d}</span></div>)}</div></section>
     <button onClick={()=>open("referral")} className={`flex w-full items-center justify-between overflow-hidden rounded-2xl bg-gradient-to-r ${purple} p-5 text-left text-white`}><span><span className="block text-lg font-extrabold">Invite friends & earn</span><span className="mt-1 block text-xs text-white/75">Get rewards when your friends start earning</span></span><span className="grid h-10 w-10 place-items-center rounded-full bg-white text-violet-600"><ChevronRight className="h-5 w-5" /></span></button>
   </div>;
