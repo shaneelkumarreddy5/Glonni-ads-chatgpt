@@ -31,6 +31,8 @@ export default function App() {
   const [toast, setToast] = useState("");
   const [detail, setDetail] = useState<DetailKey>(null);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [readNotifications, setReadNotifications] = useState<string[]>(["welcome", "ads"]);
+  const unreadNotifications = 7 - readNotifications.length;
 
   const navigate = (key: NavKey, tab?: TaskKey) => {
     setDetail(null);
@@ -46,9 +48,9 @@ export default function App() {
 
   return (
     <main className="mx-auto min-h-screen w-full max-w-[1180px] bg-[#fbfbfe] pb-28 md:my-5 md:min-h-[calc(100vh-2.5rem)] md:rounded-[32px] md:border md:border-white md:shadow-[0_28px_80px_rgba(50,35,95,.12)]">
-      <Header activeNav={activeNav} detail={detail} onBack={() => setDetail(null)} onSearch={() => setSearchOpen(true)} onNotifications={() => setDetail("notifications")} />
+      <Header activeNav={activeNav} detail={detail} unreadNotifications={unreadNotifications} onBack={() => setDetail(null)} onSearch={() => setSearchOpen(true)} onNotifications={() => setDetail("notifications")} />
       <section className="px-4 pb-4 md:px-8 lg:px-10">
-        {detail ? <DetailScreen detail={detail} open={setDetail} notify={notify} /> : <>
+        {detail ? <DetailScreen detail={detail} open={setDetail} notify={notify} readNotifications={readNotifications} setReadNotifications={setReadNotifications} /> : <>
           {activeNav === "home" && <HomeScreen navigate={navigate} open={setDetail} watched={watched} />}
           {activeNav === "tasks" && <TasksScreen active={taskTab} setActive={setTaskTab} watched={watched} setWatched={setWatched} notify={notify} />}
           {activeNav === "shop" && <ShopScreen notify={notify} open={setDetail} />}
@@ -63,7 +65,7 @@ export default function App() {
   );
 }
 
-function Header({ activeNav, detail, onBack, onSearch, onNotifications }: { activeNav: NavKey; detail: DetailKey; onBack: () => void; onSearch: () => void; onNotifications: () => void }) {
+function Header({ activeNav, detail, unreadNotifications, onBack, onSearch, onNotifications }: { activeNav: NavKey; detail: DetailKey; unreadNotifications: number; onBack: () => void; onSearch: () => void; onNotifications: () => void }) {
   const title = navItems.find((item) => item.key === activeNav)?.label;
   const detailTitles: Partial<Record<Exclude<DetailKey, null>, string>> = { notifications:"Notifications", referral:"Refer & Earn", bonus:"Daily Bonus", wallet:"Wallet", history:"Earning History", personal:"Personal Information", payout:"UPI / Bank Details", kyc:"KYC Verification", preferences:"Preferences", language:"Language", support:"Help & Support", legal:"Legal & Policies", logout:"Log out", stores:"All Stores" };
   return (
@@ -74,7 +76,7 @@ function Header({ activeNav, detail, onBack, onSearch, onNotifications }: { acti
       <div className="flex items-center gap-2">
         {activeNav !== "home" && <div className="flex items-center gap-1.5 rounded-full border border-[#ebe8f3] bg-white px-3 py-2 text-sm font-extrabold text-[#272034] shadow-sm"><Coins className="h-4 w-4 text-amber-400" fill="currentColor" /> 0</div>}
         {!detail && <button onClick={onSearch} aria-label="Search Glonni Ads" className="grid h-10 w-10 place-items-center rounded-full border border-[#ebe8f3] bg-white text-[#332c43] shadow-sm transition hover:border-violet-300 hover:text-violet-600"><Search className="h-5 w-5" /></button>}
-        {!detail && <button onClick={onNotifications} aria-label="Notifications" className="relative grid h-10 w-10 place-items-center rounded-full border border-[#ebe8f3] bg-white text-[#332c43] shadow-sm"><Bell className="h-5 w-5" /><span className="absolute right-0 top-0 grid h-4 min-w-4 place-items-center rounded-full bg-rose-500 px-1 text-[9px] font-bold text-white">3</span></button>}
+        {!detail && <button onClick={onNotifications} aria-label={`${unreadNotifications} unread notifications`} className="relative grid h-10 w-10 place-items-center rounded-full border border-[#ebe8f3] bg-white text-[#332c43] shadow-sm"><Bell className="h-5 w-5" />{unreadNotifications>0&&<span className="absolute right-0 top-0 grid h-4 min-w-4 place-items-center rounded-full bg-rose-500 px-1 text-[9px] font-bold text-white">{unreadNotifications}</span>}</button>}
       </div>
     </header>
   );
@@ -277,8 +279,8 @@ function HistoryExperience() {
 function PayoutChoice({active,icon:Icon,title,body,onClick}:{active:boolean;icon:LucideIcon;title:string;body:string;onClick:()=>void}) { return <button onClick={onClick} className={`flex w-full items-center gap-3 rounded-2xl border p-4 text-left ${active?"border-violet-500 bg-violet-50":"border-[#ece9f2] bg-white"}`}><span className={`grid h-11 w-11 place-items-center rounded-xl ${active?"bg-violet-600 text-white":"bg-slate-100 text-slate-500"}`}><Icon className="h-5 w-5"/></span><span className="flex-1"><b className="block text-sm">{title}</b><span className="text-xs text-slate-500">{body}</span></span><span className={`grid h-5 w-5 place-items-center rounded-full border ${active?"border-violet-600 bg-violet-600":"border-slate-300"}`}>{active&&<CheckCircle2 className="h-3.5 w-3.5 text-white"/>}</span></button> }
 function SummaryRow({label,value,last=false}:{label:string;value:string;last?:boolean}) { return <div className={`flex items-center justify-between py-3 text-sm ${last?"":"border-b border-[#ece9f2]"}`}><span className="text-slate-500">{label}</span><b className="text-right text-[#282133]">{value}</b></div> }
 
-function DetailScreen({detail,open,notify}:{detail:Exclude<DetailKey,null>;open:(detail:DetailKey)=>void;notify:(message:string)=>void}) {
-  if(detail==="notifications") return <DetailShell icon={Bell} title="You’re all caught up" body="Updates about rewards, tasks and withdrawals will appear here."><Notice icon={Gift} title="Welcome to Glonni Ads" body="Explore the new rewards experience." time="Today"/><Notice icon={ClipboardCheck} title="12 ads watched" body="8 more ads are available in today’s demo progress." time="Today"/><Notice icon={ShieldCheck} title="Protect your account" body="Complete KYC before your first withdrawal." time="Yesterday"/></DetailShell>;
+function DetailScreen({detail,open,notify,readNotifications,setReadNotifications}:{detail:Exclude<DetailKey,null>;open:(detail:DetailKey)=>void;notify:(message:string)=>void;readNotifications:string[];setReadNotifications:React.Dispatch<React.SetStateAction<string[]>>}) {
+  if(detail==="notifications") return <NotificationsExperience open={open} notify={notify} readNotifications={readNotifications} setReadNotifications={setReadNotifications}/>;
   if(detail==="referral") return <ReferralExperience notify={notify}/>;
   if(detail==="bonus") return <DailyBonusExperience notify={notify}/>;
   if(detail==="wallet") return <WalletExperience open={open} notify={notify}/>;
@@ -292,6 +294,45 @@ function DetailScreen({detail,open,notify}:{detail:Exclude<DetailKey,null>;open:
   if(detail==="legal") return <LegalPolicies/>;
   if(detail==="logout") return <LogoutPreview notify={notify}/>;
   return <StoreDirectory notify={notify}/>;
+}
+
+function NotificationsExperience({open,notify,readNotifications,setReadNotifications}:{open:(detail:DetailKey)=>void;notify:(message:string)=>void;readNotifications:string[];setReadNotifications:React.Dispatch<React.SetStateAction<string[]>>}) {
+  const [filter,setFilter]=useState("All");
+  const notifications=[
+    {id:"bonus",category:"Rewards",title:"Your daily bonus is ready",body:"Claim Day 4 now to continue your three-day streak.",time:"2 min",icon:Gift,tone:"bg-orange-100 text-orange-600",action:"bonus" as DetailKey,actionLabel:"Claim bonus"},
+    {id:"survey",category:"Tasks",title:"New ₹18 survey available",body:"Share your entertainment preferences. Estimated time: 4 minutes.",time:"18 min",icon:ClipboardCheck,tone:"bg-emerald-100 text-emerald-600",action:null,actionLabel:"View tasks"},
+    {id:"withdrawal",category:"Withdrawals",title:"Withdrawal rules updated",body:"Complete KYC and reach ₹500 before requesting your first payout.",time:"1 hr",icon:Landmark,tone:"bg-blue-100 text-blue-600",action:"wallet" as DetailKey,actionLabel:"View wallet"},
+    {id:"deal",category:"Offers",title:"Featured shopping reward",body:"Compare partner-store prices and preview your estimated earning.",time:"3 hr",icon:ShoppingBag,tone:"bg-pink-100 text-pink-600",action:"stores" as DetailKey,actionLabel:"Explore stores"},
+    {id:"kyc",category:"Account",title:"Protect your account",body:"Preview the four-step KYC journey before backend verification is enabled.",time:"Yesterday",icon:ShieldCheck,tone:"bg-violet-100 text-violet-600",action:"kyc" as DetailKey,actionLabel:"View KYC"},
+    {id:"ads",category:"Tasks",title:"12 ads watched today",body:"Eight more ads are available in today’s demo progress.",time:"Yesterday",icon:MonitorPlay,tone:"bg-indigo-100 text-indigo-600",action:null,actionLabel:"Continue watching"},
+    {id:"welcome",category:"Offers",title:"Welcome to Glonni Ads",body:"Explore tasks, shopping rewards, game missions and daily bonuses.",time:"7 Aug",icon:Sparkles,tone:"bg-amber-100 text-amber-600",action:null,actionLabel:"Explore app"},
+  ];
+  const visible=notifications.filter(item=>filter==="All"||item.category===filter);
+  const unreadCount=notifications.filter(item=>!readNotifications.includes(item.id)).length;
+  const markRead=(id:string)=>setReadNotifications(current=>current.includes(id)?current:[...current,id]);
+  const act=(item:typeof notifications[number])=>{
+    markRead(item.id);
+    if(item.action) open(item.action);
+    else notify(`${item.actionLabel} opened in this frontend demo`);
+  };
+  const markAll=()=>{setReadNotifications(notifications.map(item=>item.id));notify("All notifications marked as read")};
+  return <div className="mx-auto max-w-2xl space-y-5">
+    <section className={`relative overflow-hidden rounded-[26px] bg-gradient-to-r ${purple} p-5 text-white shadow-[0_18px_45px_rgba(91,56,190,.2)]`}>
+      <div className="absolute -right-10 -top-12 h-40 w-40 rounded-full bg-white/10"/><div className="relative flex items-start justify-between gap-4"><div><span className="text-[10px] font-black tracking-[.18em] text-white/70">NOTIFICATION CENTRE</span><h2 className="mt-2 text-2xl font-black">{unreadCount?`${unreadCount} unread update${unreadCount===1?"":"s"}`:"You’re all caught up"}</h2><p className="mt-2 max-w-md text-sm leading-6 text-white/75">Rewards, task progress, withdrawals and useful offers in one place.</p></div><span className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-white/15"><Bell className="h-7 w-7"/></span></div>
+      {unreadCount>0&&<button onClick={markAll} className="relative mt-4 rounded-full bg-white px-4 py-2 text-xs font-black text-violet-700">Mark all as read</button>}
+    </section>
+    <div className="no-scrollbar flex gap-2 overflow-x-auto">{["All","Rewards","Tasks","Withdrawals","Offers","Account"].map(item=><button key={item} onClick={()=>setFilter(item)} className={`whitespace-nowrap rounded-full px-4 py-2 text-xs font-bold transition ${filter===item?"bg-[#241b38] text-white":"border border-[#ece9f2] bg-white text-slate-600"}`}>{item}</button>)}</div>
+    <section className="overflow-hidden rounded-[22px] border border-[#ece9f2] bg-white">{visible.map(item=>{
+      const unread=!readNotifications.includes(item.id);
+      const Icon=item.icon;
+      return <article key={item.id} className={`relative border-b border-[#f0edf5] p-4 last:border-0 ${unread?"bg-violet-50/45":"bg-white"}`}>
+        {unread&&<span className="absolute right-4 top-4 h-2.5 w-2.5 rounded-full bg-violet-600 ring-4 ring-violet-100"/>}
+        <button onClick={()=>act(item)} className="flex w-full gap-3 pr-4 text-left"><span className={`grid h-11 w-11 shrink-0 place-items-center rounded-xl ${item.tone}`}><Icon className="h-5 w-5"/></span><span className="min-w-0 flex-1"><span className="flex items-start justify-between gap-3"><b className={`block text-sm ${unread?"text-[#241d34]":"text-slate-600"}`}>{item.title}</b><span className="shrink-0 text-[10px] text-slate-400">{item.time}</span></span><span className="mt-1 block text-xs leading-5 text-slate-500">{item.body}</span><span className="mt-2 inline-flex items-center gap-1 text-[11px] font-extrabold text-violet-600">{item.actionLabel}<ChevronRight className="h-3.5 w-3.5"/></span></span></button>
+      </article>})}</section>
+    {visible.length===0&&<EmptyState icon={Bell} title="No notifications here" body="New updates in this category will appear here."/>}
+    <button onClick={()=>open("preferences")} className="flex w-full items-center justify-between rounded-2xl border border-[#ece9f2] bg-white p-4 text-left"><span className="flex items-center gap-3"><span className="grid h-10 w-10 place-items-center rounded-xl bg-slate-100 text-slate-600"><Settings2 className="h-5 w-5"/></span><span><b className="block text-sm">Notification preferences</b><span className="text-xs text-slate-500">Choose the updates you want to receive</span></span></span><ChevronRight className="h-5 w-5 text-slate-300"/></button>
+    <p className="text-center text-[11px] leading-5 text-slate-400">Sample notifications are shown for the frontend preview. Live updates will use Supabase later.</p>
+  </div>;
 }
 
 function DailyBonusExperience({notify}:{notify:(message:string)=>void}) {
@@ -428,7 +469,6 @@ function StoreDirectory({ notify }: { notify: (message: string) => void }) {
 }
 
 function DetailShell({icon:Icon,title,body,children}:{icon:LucideIcon;title:string;body:string;children:React.ReactNode}) { return <div className="mx-auto max-w-2xl space-y-5"><section className="rounded-[26px] border border-violet-100 bg-gradient-to-br from-violet-50 to-white p-5"><span className="grid h-12 w-12 place-items-center rounded-2xl bg-violet-600 text-white"><Icon className="h-6 w-6"/></span><h2 className="mt-4 text-2xl font-black text-[#241d34]">{title}</h2><p className="mt-2 text-sm leading-6 text-slate-500">{body}</p></section>{children}</div> }
-function Notice({icon:Icon,title,body,time}:{icon:LucideIcon;title:string;body:string;time:string}) { return <article className="flex gap-3 rounded-2xl border border-[#ece9f2] bg-white p-4"><span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-violet-50 text-violet-600"><Icon className="h-5 w-5"/></span><span className="flex-1"><b className="block text-sm">{title}</b><span className="mt-1 block text-xs leading-5 text-slate-500">{body}</span></span><span className="text-[10px] text-slate-400">{time}</span></article> }
 function PrimaryButton({onClick,children}:{onClick:()=>void;children:React.ReactNode}) { return <button onClick={onClick} className={`w-full rounded-xl bg-gradient-to-r ${purple} py-3.5 text-sm font-extrabold text-white shadow-md`}>{children}</button> }
 function InfoCard({title,lines}:{title:string;lines:string[]}) { return <section className="rounded-2xl border border-[#ece9f2] bg-white p-5"><b className="text-sm">{title}</b><div className="mt-3 space-y-3">{lines.map(line=><div key={line} className="flex gap-2 text-xs leading-5 text-slate-500"><CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-500"/>{line}</div>)}</div></section> }
 function Metric({label,value}:{label:string;value:string}) { return <div className="rounded-2xl border border-[#ece9f2] bg-white p-4"><span className="text-xs text-slate-500">{label}</span><b className="mt-1 block text-xl">{value}</b></div> }
