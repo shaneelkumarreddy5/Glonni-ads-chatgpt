@@ -5568,43 +5568,77 @@ function LanguageSettings({ notify }: { notify: (message: string) => void }) {
 }
 
 function SupportExperience({ notify }: { notify: (message: string) => void }) {
+  const [view, setView] = useState<"help" | "create" | "tickets">("help");
   const [topic, setTopic] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
+  const [category, setCategory] = useState("Missing reward");
+  const [reference, setReference] = useState("");
   const [message, setMessage] = useState("");
+  const [attachment, setAttachment] = useState("");
+  const [tickets, setTickets] = useState([
+    { id: "GLN-SUP-1042", category: "Withdrawal issue", subject: "Payout verification", status: "Waiting for you", updated: "Today, 11:20 AM" },
+    { id: "GLN-SUP-0981", category: "Missing reward", subject: "Game milestone reward", status: "Resolved", updated: "06 Aug, 4:45 PM" },
+  ]);
   const faqs = [
     {
       q: "Why is my reward pending?",
       a: "Partner tasks are checked before rewards become available. The expected time is shown inside each offer.",
+      tags: "reward pending verification task",
     },
     {
       q: "Why did task tracking fail?",
       a: "Start through Glonni Ads, use the same device and complete every requirement before the deadline.",
+      tags: "tracking app survey game install",
     },
     {
       q: "When will a withdrawal arrive?",
       a: "Verified UPI and bank payouts are expected within 1–3 working days after approval.",
+      tags: "withdrawal payout upi bank money",
     },
     {
       q: "Is KYC required?",
       a: "Yes. KYC will be required before your first withdrawal to protect users and prevent fraud.",
+      tags: "kyc identity verification",
+    },
+    {
+      q: "How do I report missing cashback?",
+      a: "Wait until the store's expected tracking time has passed, then share the order ID, purchase date and tracked store-visit reference.",
+      tags: "shop cashback missing purchase order",
+    },
+    {
+      q: "What evidence helps resolve an issue?",
+      a: "Attach a clear screenshot showing the completion, order or payout status. Never upload passwords, OTPs, PINs or full card details.",
+      tags: "screenshot proof evidence attachment safety",
     },
   ];
+  const filteredFaqs = faqs.filter((item) => `${item.q} ${item.a} ${item.tags}`.toLowerCase().includes(query.toLowerCase()));
+  const categories = ["Missing reward", "Withdrawal issue", "Task tracking", "Shop cashback", "Account & KYC", "Technical problem", "Other"];
+  const submitTicket = () => {
+    if (message.trim().length < 10) return;
+    const id = `GLN-SUP-${String(1100 + tickets.length)}`;
+    setTickets([{ id, category, subject: message.trim().slice(0, 42), status: "Submitted", updated: "Just now" }, ...tickets]);
+    setMessage(""); setReference(""); setAttachment(""); setView("tickets");
+    notify(`Support ticket ${id} created`);
+  };
   return (
     <DetailShell
       icon={CircleHelp}
       title="How can we help?"
       body="Find a quick answer or create a support request."
     >
-      <div className="relative">
-        <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-        <input
-          placeholder="Search help topics"
-          className="w-full rounded-2xl border border-[#ece9f2] bg-white py-3.5 pl-11 pr-4 text-sm outline-none focus:border-violet-400"
-        />
+      <div className="grid grid-cols-3 gap-2 rounded-2xl bg-[#eeeaf8] p-1.5">
+        {([ ["help", "Help centre"], ["create", "New ticket"], ["tickets", "My tickets"] ] as const).map(([key, label]) => <button key={key} onClick={() => setView(key)} className={`rounded-xl px-2 py-2.5 text-[11px] font-extrabold transition ${view === key ? "bg-white text-violet-700 shadow-sm" : "text-slate-500"}`}>{label}</button>)}
       </div>
-      <section>
-        <SectionTitle title="Frequently asked questions" />
-        <div className="overflow-hidden rounded-2xl border border-[#ece9f2] bg-white">
-          {faqs.map((item) => (
+
+      {view === "help" && <>
+        <div className="relative">
+          <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search rewards, withdrawals, KYC…" className="w-full rounded-2xl border border-[#ece9f2] bg-white py-3.5 pl-11 pr-4 text-sm outline-none focus:border-violet-400" />
+        </div>
+        <section>
+          <SectionTitle title={query ? `${filteredFaqs.length} help results` : "Frequently asked questions"} />
+          <div className="overflow-hidden rounded-2xl border border-[#ece9f2] bg-white">
+          {filteredFaqs.map((item) => (
             <button
               key={item.q}
               onClick={() => setTopic(topic === item.q ? null : item.q)}
@@ -5623,39 +5657,45 @@ function SupportExperience({ notify }: { notify: (message: string) => void }) {
               )}
             </button>
           ))}
-        </div>
-      </section>
-      <section className="rounded-2xl border border-[#ece9f2] bg-white p-5">
+          {filteredFaqs.length === 0 && <div className="p-6 text-center"><CircleHelp className="mx-auto h-7 w-7 text-slate-300" /><b className="mt-2 block text-sm">No exact answer found</b><p className="mt-1 text-xs text-slate-500">Create a ticket and include the relevant tracking reference.</p><button onClick={() => setView("create")} className="mt-4 rounded-xl bg-violet-600 px-4 py-2.5 text-xs font-extrabold text-white">Create ticket</button></div>}
+          </div>
+        </section>
+        <button onClick={() => { setCategory("Missing reward"); setView("create"); }} className="flex w-full items-center gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-left"><span className="grid h-10 w-10 place-items-center rounded-xl bg-amber-100 text-amber-700"><Coins className="h-5 w-5" /></span><span className="flex-1"><b className="block text-sm text-amber-950">Reward not received?</b><span className="text-xs text-amber-700">Open a priority missing-reward report</span></span><ChevronRight className="h-4 w-4 text-amber-600" /></button>
+      </>}
+
+      {view === "create" && <section className="rounded-2xl border border-[#ece9f2] bg-white p-5">
         <div className="flex items-center gap-3">
           <span className="grid h-11 w-11 place-items-center rounded-xl bg-violet-100 text-violet-600">
             <MessageSquare className="h-5 w-5" />
           </span>
           <span>
-            <b className="block text-sm">Create support ticket</b>
-            <span className="text-xs text-slate-500">
-              Describe your issue clearly
-            </span>
+            <b className="block text-sm">Create support ticket</b><span className="text-xs text-slate-500">Expected first reply: within 24 hours</span>
           </span>
         </div>
+        <label className="mt-4 block text-xs font-bold text-slate-600">Issue category</label>
+        <div className="mt-2 flex gap-2 overflow-x-auto pb-1">{categories.map((item) => <button key={item} onClick={() => setCategory(item)} className={`shrink-0 rounded-full px-3 py-2 text-[11px] font-bold ${category === item ? "bg-violet-600 text-white" : "bg-slate-100 text-slate-600"}`}>{item}</button>)}</div>
+        <label className="mt-4 block text-xs font-bold text-slate-600">Tracking, order or withdrawal reference</label>
+        <input value={reference} onChange={(event) => setReference(event.target.value)} placeholder="Example: GLN-WD-000128 (optional)" className="mt-2 w-full rounded-xl border border-[#e8e4ef] p-3 text-sm outline-none focus:border-violet-400" />
         <textarea
           value={message}
           onChange={(event) => setMessage(event.target.value)}
           placeholder="Tell us what happened…"
           className="mt-4 min-h-28 w-full resize-none rounded-xl border border-[#e8e4ef] p-3 text-sm outline-none focus:border-violet-400"
         />
+        <label className="mt-3 flex cursor-pointer items-center gap-3 rounded-xl border border-dashed border-violet-300 bg-violet-50 p-3 text-violet-700"><Upload className="h-5 w-5" /><span className="flex-1"><b className="block text-xs">{attachment || "Attach screenshot"}</b><span className="text-[10px] text-violet-500">PNG or JPG · demo filename only</span></span><input type="file" accept="image/png,image/jpeg" className="sr-only" onChange={(event) => setAttachment(event.target.files?.[0]?.name || "")} /></label>
+        <p className="mt-3 text-[10px] leading-4 text-slate-400">Do not upload OTPs, UPI PINs, passwords or full bank/card details.</p>
         <button
           disabled={message.trim().length < 10}
-          onClick={() => {
-            notify("Support ticket prepared in this demo");
-            setMessage("");
-          }}
+          onClick={submitTicket}
           className="mt-3 w-full rounded-xl bg-violet-600 py-3 text-xs font-extrabold text-white disabled:opacity-40"
         >
           Submit ticket
         </button>
-      </section>
+      </section>}
+
+      {view === "tickets" && <section><div className="flex items-end justify-between"><SectionTitle title="Your support tickets" /><button onClick={() => setView("create")} className="mb-3 text-xs font-extrabold text-violet-600">+ New ticket</button></div><div className="space-y-3">{tickets.map((ticket) => <article key={ticket.id} className="rounded-2xl border border-[#ece9f2] bg-white p-4"><div className="flex items-start justify-between gap-3"><span><span className="text-[10px] font-extrabold uppercase tracking-wider text-violet-600">{ticket.category}</span><b className="mt-1 block text-sm">{ticket.subject}</b><span className="mt-1 block text-[11px] text-slate-400">{ticket.id} · {ticket.updated}</span></span><span className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-extrabold ${ticket.status === "Resolved" ? "bg-emerald-100 text-emerald-700" : ticket.status === "Waiting for you" ? "bg-amber-100 text-amber-700" : "bg-violet-100 text-violet-700"}`}>{ticket.status}</span></div><div className="mt-4 grid grid-cols-3 gap-1 text-center text-[9px] font-bold text-slate-400"><span className="text-emerald-600">Submitted</span><span className={ticket.status !== "Submitted" ? "text-emerald-600" : ""}>In review</span><span className={ticket.status === "Resolved" ? "text-emerald-600" : ""}>Resolved</span></div><div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-100"><div className={`h-full rounded-full bg-emerald-500 ${ticket.status === "Resolved" ? "w-full" : ticket.status === "Waiting for you" ? "w-2/3" : "w-1/3"}`} /></div>{ticket.status === "Waiting for you" && <button onClick={() => { setMessage(`Reply for ${ticket.id}: `); setReference(ticket.id); setCategory(ticket.category); setView("create"); }} className="mt-3 w-full rounded-xl border border-amber-200 bg-amber-50 py-2.5 text-xs font-extrabold text-amber-700">Reply with requested details</button>}</article>)}</div></section>}
       <p className="text-center text-[11px] text-slate-400">
-        Support replies will appear in Notifications after backend integration.
+        This frontend preview stores tickets only for the current session. Real ticket sync and replies require backend integration.
       </p>
     </DetailShell>
   );
