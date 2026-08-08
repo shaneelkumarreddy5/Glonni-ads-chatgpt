@@ -58,6 +58,10 @@ import {
   Moon,
   Sun,
   Gauge,
+  Accessibility,
+  Type,
+  Contrast,
+  MousePointer2,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -76,6 +80,7 @@ type DetailKey =
   | "payout"
   | "kyc"
   | "preferences"
+  | "accessibility"
   | "language"
   | "support"
   | "safety"
@@ -116,6 +121,7 @@ export default function App() {
   const [isSlowNetwork, setIsSlowNetwork] = useState(false);
   const [pullDistance, setPullDistance] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [textScale, setTextScale] = useState("100");
   const toastTimer = useRef<number | null>(null);
   const pullStart = useRef<number | null>(null);
   const navigationReady = useRef(false);
@@ -140,6 +146,10 @@ export default function App() {
     if (hasDemoSession) setAuthStage("authenticated");
     const savedTheme = window.localStorage.getItem("glonni-theme") || "light";
     document.documentElement.classList.toggle("dark", savedTheme === "dark");
+    const savedTextScale = window.localStorage.getItem("glonni-text-scale") || "100";
+    setTextScale(savedTextScale);
+    document.documentElement.dataset.textScale = savedTextScale;
+    document.documentElement.classList.toggle("high-contrast", window.localStorage.getItem("glonni-high-contrast") === "true");
     setAuthReady(true);
     const updateConnection = () => setIsOnline(navigator.onLine);
     const connection = (navigator as Navigator & {
@@ -208,6 +218,17 @@ export default function App() {
     window.addEventListener("popstate", restore);
     return () => window.removeEventListener("popstate", restore);
   }, [authReady, authStage]);
+
+  useEffect(() => {
+    if (!authReady || authStage !== "authenticated") return;
+    const closeTopLayer = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      if (searchOpen) setSearchOpen(false);
+      else if (detail) setDetail(null);
+    };
+    window.addEventListener("keydown", closeTopLayer);
+    return () => window.removeEventListener("keydown", closeTopLayer);
+  }, [authReady, authStage, detail, searchOpen]);
 
   const completeAuthentication = ({ name, mobile, interests }: DemoProfile) => {
     const cleanName = name.trim() || "Glonni User";
@@ -360,6 +381,8 @@ export default function App() {
             onLogout={logout}
             readNotifications={readNotifications}
             setReadNotifications={setReadNotifications}
+            textScale={textScale}
+            setTextScale={setTextScale}
           />
         ) : (
           <>
@@ -3421,6 +3444,7 @@ function ProfileScreen({
       key: "preferences",
     },
     { icon: Languages, title: "Language", body: "English", key: "language" },
+    { icon: Accessibility, title: "Accessibility", body: "Text size, contrast and navigation", key: "accessibility" },
     {
       icon: CircleHelp,
       title: "Help & support",
@@ -4348,6 +4372,8 @@ function DetailScreen({
   onLogout,
   readNotifications,
   setReadNotifications,
+  textScale,
+  setTextScale,
 }: {
   detail: Exclude<DetailKey, null>;
   open: (detail: DetailKey) => void;
@@ -4355,6 +4381,8 @@ function DetailScreen({
   onLogout: () => void;
   readNotifications: string[];
   setReadNotifications: React.Dispatch<React.SetStateAction<string[]>>;
+  textScale: string;
+  setTextScale: (value: string) => void;
 }) {
   if (detail === "notifications")
     return (
@@ -4376,6 +4404,7 @@ function DetailScreen({
   if (detail === "kyc") return <KycExperience notify={notify} />;
   if (detail === "preferences") return <Preferences notify={notify} />;
   if (detail === "language") return <LanguageSettings notify={notify} />;
+  if (detail === "accessibility") return <AccessibilitySettings notify={notify} textScale={textScale} setTextScale={setTextScale} />;
   if (detail === "support") return <SupportExperience notify={notify} />;
   if (detail === "safety") return <TrustSafetyExperience notify={notify} />;
   if (detail === "legal") return <LegalPolicies />;
@@ -5641,6 +5670,62 @@ function Switch({ value, onChange, label }: { value: boolean; onChange: () => vo
 
 function ToggleRow({ title, body, value, onChange }: { title: string; body: string; value: boolean; onChange: () => void }) {
   return <div className="mt-3 flex items-center gap-4 rounded-2xl border border-[#ece9f2] bg-white p-4"><span className="flex-1"><b className="block text-sm">{title}</b><span className="mt-1 block text-xs text-slate-500">{body}</span></span><Switch value={value} onChange={onChange} label={title} /></div>;
+}
+
+function AccessibilitySettings({
+  notify,
+  textScale,
+  setTextScale,
+}: {
+  notify: (message: string) => void;
+  textScale: string;
+  setTextScale: (value: string) => void;
+}) {
+  const [highContrast, setHighContrast] = useState(false);
+  useEffect(() => {
+    setHighContrast(window.localStorage.getItem("glonni-high-contrast") === "true");
+  }, []);
+  const applyScale = (value: string) => {
+    setTextScale(value);
+    document.documentElement.dataset.textScale = value;
+    window.localStorage.setItem("glonni-text-scale", value);
+    notify(`Text size set to ${value}%`);
+  };
+  const toggleContrast = () => {
+    const next = !highContrast;
+    setHighContrast(next);
+    document.documentElement.classList.toggle("high-contrast", next);
+    window.localStorage.setItem("glonni-high-contrast", String(next));
+    notify(next ? "High contrast enabled" : "Standard contrast restored");
+  };
+  return (
+    <DetailShell
+      icon={Accessibility}
+      title="Accessibility"
+      body="Adjust readability and interaction settings for this device."
+    >
+      <section className="rounded-2xl border border-[#ece9f2] bg-white p-4">
+        <div className="flex items-start gap-3">
+          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-violet-50 text-violet-700"><Type className="h-5 w-5" aria-hidden="true" /></span>
+          <span><b className="block text-sm">Text size</b><span className="mt-1 block text-xs leading-5 text-slate-500">Increase text across the app without zooming the whole screen.</span></span>
+        </div>
+        <div className="mt-4 grid grid-cols-3 gap-2" role="radiogroup" aria-label="App text size">
+          {[{ value: "100", label: "Default" }, { value: "112", label: "Large" }, { value: "125", label: "Extra large" }].map((option) => (
+            <button key={option.value} role="radio" aria-checked={textScale === option.value} onClick={() => applyScale(option.value)} className={`min-h-12 rounded-xl border px-2 text-xs font-extrabold ${textScale === option.value ? "border-violet-600 bg-violet-600 text-white" : "border-[#e7e2ef] bg-white text-slate-600"}`}>{option.label}<span className="mt-0.5 block text-[10px]">{option.value}%</span></button>
+          ))}
+        </div>
+      </section>
+      <button role="switch" aria-checked={highContrast} onClick={toggleContrast} className="flex min-h-16 w-full items-center gap-3 rounded-2xl border border-[#ece9f2] bg-white p-4 text-left">
+        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-amber-50 text-amber-700"><Contrast className="h-5 w-5" aria-hidden="true" /></span>
+        <span className="flex-1"><b className="block text-sm">High contrast</b><span className="mt-1 block text-xs leading-5 text-slate-500">Strengthen borders, text and keyboard focus indicators.</span></span>
+        <span aria-hidden="true" className={`relative h-7 w-12 shrink-0 rounded-full ${highContrast ? "bg-violet-600" : "bg-slate-200"}`}><span className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow ${highContrast ? "left-6" : "left-1"}`} /></span>
+      </button>
+      <section className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-950">
+        <div className="flex gap-3"><MousePointer2 className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" /><div><b className="block text-sm">Navigation improvements active</b><ul className="mt-2 space-y-1 text-xs leading-5"><li>• 48 px minimum touch controls</li><li>• Visible keyboard focus</li><li>• Escape closes the current overlay or screen</li><li>• Screen-reader status announcements</li></ul></div></div>
+      </section>
+      <p className="rounded-2xl bg-sky-50 px-4 py-3 text-xs leading-5 text-sky-900" role="status">Accessibility settings are stored on this device and apply immediately.</p>
+    </DetailShell>
+  );
 }
 
 function LanguageSettings({ notify }: { notify: (message: string) => void }) {
