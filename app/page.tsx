@@ -74,6 +74,7 @@ type DetailKey =
   | "preferences"
   | "language"
   | "support"
+  | "safety"
   | "legal"
   | "logout"
   | "stores"
@@ -609,6 +610,7 @@ function Header({
     preferences: "Preferences",
     language: "Language",
     support: "Help & Support",
+    safety: "Trust & Safety",
     legal: "Legal & Policies",
     logout: "Log out",
     stores: "All Stores",
@@ -801,6 +803,13 @@ function GlobalSearch({
       keywords: "faq ticket issue",
       icon: CircleHelp,
       action: () => open("support"),
+    },
+    {
+      title: "Trust & Safety",
+      group: "Support",
+      keywords: "how glonni works reward rules fraud warning appeal safety delete account",
+      icon: ShieldCheck,
+      action: () => open("safety"),
     },
     {
       title: "Terms & Privacy",
@@ -3285,6 +3294,12 @@ function ProfileScreen({
       key: "support",
     },
     {
+      icon: ShieldCheck,
+      title: "Trust & safety",
+      body: "Rules, warnings, appeals and account control",
+      key: "safety",
+    },
+    {
       icon: FileText,
       title: "Terms & privacy",
       body: "Policies and account rules",
@@ -4228,6 +4243,7 @@ function DetailScreen({
   if (detail === "preferences") return <Preferences notify={notify} />;
   if (detail === "language") return <LanguageSettings notify={notify} />;
   if (detail === "support") return <SupportExperience notify={notify} />;
+  if (detail === "safety") return <TrustSafetyExperience notify={notify} />;
   if (detail === "legal") return <LegalPolicies />;
   if (detail === "logout") return <LogoutPreview onLogout={onLogout} />;
   return <StoreDirectory notify={notify} />;
@@ -5551,6 +5567,192 @@ function SupportExperience({ notify }: { notify: (message: string) => void }) {
       <p className="text-center text-[11px] text-slate-400">
         Support replies will appear in Notifications after backend integration.
       </p>
+    </DetailShell>
+  );
+}
+
+function TrustSafetyExperience({ notify }: { notify: (message: string) => void }) {
+  const [section, setSection] = useState<
+    "overview" | "rules" | "account" | "control"
+  >("overview");
+  const [warningOpen, setWarningOpen] = useState(false);
+  const [appealOpen, setAppealOpen] = useState(false);
+  const [appealText, setAppealText] = useState("");
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteText, setDeleteText] = useState("");
+  const tabs = [
+    { key: "overview" as const, label: "How it works" },
+    { key: "rules" as const, label: "Rules" },
+    { key: "account" as const, label: "Account" },
+    { key: "control" as const, label: "Your data" },
+  ];
+  const earningSteps = [
+    ["1", "Choose an eligible offer", "Check device, location, deadline and first-user requirements."],
+    ["2", "Start through Glonni Ads", "A tracking reference links your activity to the partner offer."],
+    ["3", "Complete every requirement", "Keep the app installed or purchase active until verification finishes."],
+    ["4", "Partner verifies the activity", "The reward moves from pending to approved, credited or rejected."],
+    ["5", "Withdraw verified earnings", "KYC and a verified UPI or bank account will be required."],
+  ];
+  const rules = [
+    ["One genuine account", "Do not create duplicate accounts or share devices to repeat new-user offers."],
+    ["Use accurate details", "Profile, KYC and payout information must belong to the account holder."],
+    ["Complete tasks honestly", "Bots, VPN manipulation, emulators, automated clicks and fabricated proof are prohibited."],
+    ["Keep purchases valid", "Cancelled, returned or refunded orders do not qualify for cashback."],
+    ["Wait for verification", "Do not uninstall an offer app or change tracking permissions before the stated check is complete."],
+  ];
+  const submitAppeal = () => {
+    notify("Demo account appeal submitted · GLN-SA-0091");
+    setAppealOpen(false);
+    setAppealText("");
+  };
+  const requestDeletion = () => {
+    notify("Demo deletion request prepared · not sent to a server");
+    setDeleteOpen(false);
+    setDeleteText("");
+  };
+  return (
+    <DetailShell
+      icon={ShieldCheck}
+      title="Trust & safety centre"
+      body="Understand every reward, protect your account and stay in control of your data."
+    >
+      <div className="flex gap-2 overflow-x-auto pb-1" aria-label="Trust and safety sections">
+        {tabs.map((tab) => (
+          <button
+            key={tab.key}
+            onClick={() => setSection(tab.key)}
+            className={`shrink-0 rounded-full px-4 py-2 text-xs font-extrabold transition ${
+              section === tab.key
+                ? "bg-violet-600 text-white"
+                : "border border-[#e8e4ef] bg-white text-slate-600"
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {section === "overview" && (
+        <>
+          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-900">
+            <div className="flex gap-3">
+              <BadgeCheck className="mt-0.5 h-5 w-5 shrink-0" />
+              <p className="text-xs leading-5">
+                <b className="block text-sm">Know where every rupee is</b>
+                Glonni Ads shows eligibility, tracking status, expected verification time and the final decision for each reward.
+              </p>
+            </div>
+          </div>
+          <section>
+            <SectionTitle title="How earning works" />
+            <div className="space-y-3">
+              {earningSteps.map(([number, title, body]) => (
+                <div key={number} className="flex gap-3 rounded-2xl border border-[#ece9f2] bg-white p-4">
+                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-violet-100 text-sm font-black text-violet-700">
+                    {number}
+                  </span>
+                  <p className="text-xs leading-5 text-slate-500">
+                    <b className="block text-sm text-[#282133]">{title}</b>{body}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </section>
+        </>
+      )}
+
+      {section === "rules" && (
+        <>
+          <section className="rounded-2xl border border-[#ece9f2] bg-white p-5">
+            <div className="flex items-center gap-3">
+              <LockKeyhole className="h-5 w-5 text-violet-600" />
+              <b>Rules that protect genuine users</b>
+            </div>
+            <div className="mt-4 space-y-4">
+              {rules.map(([title, body]) => (
+                <div key={title} className="flex gap-3">
+                  <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
+                  <p className="text-xs leading-5 text-slate-500"><b className="block text-[#282133]">{title}</b>{body}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+          <div className="rounded-2xl bg-amber-50 p-4 text-xs leading-5 text-amber-900">
+            <b className="block">Fair review before action</b>
+            Suspicious activity may pause rewards for review. Users should see the reason, evidence requested and an appeal option before a final restriction.
+          </div>
+        </>
+      )}
+
+      {section === "account" && (
+        <>
+          <section className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5">
+            <div className="flex items-center justify-between gap-3">
+              <span>
+                <span className="text-xs text-emerald-700">Account standing</span>
+                <b className="mt-1 block text-lg text-emerald-950">Good standing</b>
+              </span>
+              <BadgeCheck className="h-9 w-9 text-emerald-600" />
+            </div>
+            <p className="mt-3 text-xs leading-5 text-emerald-800">No active restrictions. One resolved demo warning is available below to preview the review and appeal experience.</p>
+          </section>
+          <section className="overflow-hidden rounded-2xl border border-[#ece9f2] bg-white">
+            <button onClick={() => setWarningOpen(!warningOpen)} className="flex w-full items-center gap-3 p-4 text-left">
+              <span className="grid h-10 w-10 place-items-center rounded-xl bg-amber-100 text-amber-700"><AlertTriangle className="h-5 w-5" /></span>
+              <span className="flex-1"><b className="block text-sm">Tracking mismatch · resolved</b><span className="text-xs text-slate-500">Game mission · Demo example</span></span>
+              <ChevronRight className={`h-4 w-4 text-violet-500 transition ${warningOpen ? "rotate-90" : ""}`} />
+            </button>
+            {warningOpen && (
+              <div className="border-t border-[#f0edf5] p-4 text-xs leading-5 text-slate-500">
+                <b className="text-[#282133]">Why it appeared</b>
+                <p>The partner reported a different device identifier during milestone verification. No reward was removed.</p>
+                <b className="mt-3 block text-[#282133]">What users can do</b>
+                <p>Review the tracking reference, attach relevant proof and appeal within 30 days.</p>
+                <button onClick={() => setAppealOpen(true)} className="mt-4 flex items-center gap-2 rounded-xl bg-violet-600 px-4 py-2.5 font-extrabold text-white"><RotateCcw className="h-4 w-4" />Preview appeal</button>
+              </div>
+            )}
+          </section>
+        </>
+      )}
+
+      {section === "control" && (
+        <>
+          <section className="rounded-2xl border border-[#ece9f2] bg-white p-5">
+            <div className="flex items-center gap-3"><FileText className="h-5 w-5 text-violet-600" /><b>Your privacy controls</b></div>
+            <div className="mt-4 space-y-3 text-xs leading-5 text-slate-500">
+              <p><b className="text-[#282133]">Access:</b> Request a copy of account, reward and support data after backend integration.</p>
+              <p><b className="text-[#282133]">Correction:</b> Update profile details or contact support for verified-field changes.</p>
+              <p><b className="text-[#282133]">Deletion:</b> Request account deletion. Legal, fraud-prevention or payment records may be retained only where required.</p>
+            </div>
+          </section>
+          <button onClick={() => setDeleteOpen(true)} className="flex w-full items-center justify-between rounded-2xl border border-rose-200 bg-rose-50 p-4 text-left text-rose-800">
+            <span><b className="block text-sm">Request account deletion</b><span className="text-xs">Preview the protected deletion flow</span></span><ChevronRight className="h-5 w-5" />
+          </button>
+          <p className="text-center text-[11px] leading-5 text-slate-400">This frontend preview stores only local demo data. No deletion request is sent to a server.</p>
+        </>
+      )}
+
+      {appealOpen && (
+        <div role="dialog" aria-modal="true" aria-labelledby="safety-appeal-title" className="fixed inset-0 z-50 grid place-items-end bg-slate-950/40 p-4 md:place-items-center">
+          <div className="w-full max-w-md rounded-[28px] bg-white p-6 shadow-2xl">
+            <div className="flex items-start justify-between gap-3"><span><span className="text-xs font-bold text-violet-600">DEMO APPEAL</span><h3 id="safety-appeal-title" className="mt-1 text-xl font-black">Explain what happened</h3></span><button onClick={() => setAppealOpen(false)} aria-label="Close appeal"><X className="h-5 w-5" /></button></div>
+            <textarea value={appealText} onChange={(event) => setAppealText(event.target.value)} placeholder="Add tracking details or evidence…" className="mt-4 min-h-28 w-full resize-none rounded-xl border border-[#e8e4ef] p-3 text-sm outline-none focus:border-violet-400" />
+            <button disabled={appealText.trim().length < 10} onClick={submitAppeal} className="mt-3 w-full rounded-xl bg-violet-600 py-3 text-sm font-extrabold text-white disabled:opacity-40">Submit demo appeal</button>
+          </div>
+        </div>
+      )}
+
+      {deleteOpen && (
+        <div role="dialog" aria-modal="true" aria-labelledby="delete-title" className="fixed inset-0 z-50 grid place-items-end bg-slate-950/40 p-4 md:place-items-center">
+          <div className="w-full max-w-md rounded-[28px] bg-white p-6 shadow-2xl">
+            <div className="flex items-start justify-between gap-3"><span><span className="text-xs font-bold text-rose-600">SENSITIVE ACTION</span><h3 id="delete-title" className="mt-1 text-xl font-black">Delete your account?</h3></span><button onClick={() => setDeleteOpen(false)} aria-label="Close deletion request"><X className="h-5 w-5" /></button></div>
+            <p className="mt-3 text-xs leading-5 text-slate-500">Production deletion will first block new earning activity, settle eligible pending rewards, verify identity and provide a cancellation window. Type <b>DELETE</b> to preview the request.</p>
+            <input value={deleteText} onChange={(event) => setDeleteText(event.target.value)} placeholder="Type DELETE" className="mt-4 w-full rounded-xl border border-[#e8e4ef] p-3 text-sm outline-none focus:border-rose-400" />
+            <button disabled={deleteText !== "DELETE"} onClick={requestDeletion} className="mt-3 w-full rounded-xl bg-rose-500 py-3 text-sm font-extrabold text-white disabled:opacity-40">Prepare deletion request</button>
+            <button onClick={() => setDeleteOpen(false)} className="mt-2 w-full py-2 text-xs font-extrabold text-slate-500">Keep my account</button>
+          </div>
+        </div>
+      )}
     </DetailShell>
   );
 }
