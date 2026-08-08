@@ -1,6 +1,3 @@
-Warning: truncated output (original token count: 63992)
-Total output lines: 6407
-
 "use client";
 
 import {
@@ -2698,7 +2695,1308 @@ function ShopScreen({
   if (shopView === "claim")
     return (
       <div className="mx-auto max-w-2xl space-y-5">
-        <button onClick={() => setShopView("tracking")} className="inline-flex items-center gap-2 text-sm font-bold text-violet-600"><ArrowLeft className="h-4 w-4…13992 tokens truncated…iv>
+        <button onClick={() => setShopView("tracking")} className="inline-flex items-center gap-2 text-sm font-bold text-violet-600"><ArrowLeft className="h-4 w-4" /> Back to tracking</button>
+        <section className="rounded-[28px] border border-[#ece9f2] bg-white p-5">
+          <span className="grid h-12 w-12 place-items-center rounded-2xl bg-rose-50 text-rose-600"><CircleHelp className="h-6 w-6" /></span>
+          <h2 className="mt-4 text-xl font-black text-[#241d34]">Missing cashback claim</h2>
+          <p className="mt-2 text-sm leading-6 text-slate-500">We’ll attach tracking ID GL-SH-48219 automatically. Claims can be submitted 72 hours after purchase.</p>
+          <label className="mt-5 block text-xs font-extrabold text-slate-700">What went wrong?</label>
+          <textarea value={claimText} onChange={(e) => setClaimText(e.target.value)} placeholder="Add the order date, store order ID and what you expected…" className="mt-2 min-h-32 w-full rounded-2xl border border-[#e8e4ef] p-4 text-sm outline-none focus:border-violet-500" />
+          <button disabled={claimText.trim().length < 15} onClick={() => { notify("Missing cashback claim created: MC-2048"); setClaimText(""); setShopView("tracking"); }} className="mt-4 w-full rounded-xl bg-violet-600 py-3.5 text-sm font-extrabold text-white disabled:opacity-40">Submit claim</button>
+        </section>
+      </div>
+    );
+  if (product)
+    return (
+      <div className="mx-auto max-w-2xl space-y-5">
+        <button
+          onClick={() => setSelected(null)}
+          className="inline-flex items-center gap-2 text-sm font-bold text-violet-600"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back to products
+        </button>
+        <section className="rounded-[28px] border border-[#ece9f2] bg-white p-5">
+          <div className="mb-3 flex justify-end">
+            <button onClick={() => toggleSaved(product.name)} aria-label={saved.includes(product.name) ? "Remove from saved" : "Save product"} className={`grid h-10 w-10 place-items-center rounded-full border ${saved.includes(product.name) ? "border-rose-200 bg-rose-50 text-rose-600" : "border-slate-200 text-slate-500"}`}>
+              <Heart className={`h-5 w-5 ${saved.includes(product.name) ? "fill-current" : ""}`} />
+            </button>
+          </div>
+          <div className="flex gap-4">
+            <span className="grid h-24 w-24 shrink-0 place-items-center rounded-3xl bg-gradient-to-br from-violet-50 to-pink-50 text-5xl">
+              {product.icon}
+            </span>
+            <div>
+              <span className="text-[10px] font-black uppercase tracking-wider text-violet-600">
+                {product.category}
+              </span>
+              <h2 className="mt-1 text-xl font-black text-[#241d34]">
+                {product.name}
+              </h2>
+              <p className="mt-1 text-xs text-slate-500">{product.subtitle}</p>
+              <p className="mt-3 text-sm font-bold text-slate-500">
+                Best price{" "}
+                <span className="text-lg text-[#241d34]">{product.best}</span>
+              </p>
+            </div>
+          </div>
+          <div className="mt-5 rounded-2xl bg-emerald-50 p-4">
+            <div className="flex items-center gap-2 text-emerald-700">
+              <Sparkles className="h-5 w-5" />
+              <b className="text-sm">Best earning opportunity</b>
+            </div>
+            <p className="mt-1 text-2xl font-black text-emerald-700">
+              Earn up to {product.earn}
+            </p>
+            <p className="mt-1 text-xs text-emerald-700/75">
+              Estimated reward after the return period ends.
+            </p>
+          </div>
+        </section>
+        <section>
+          <SectionTitle
+            title="Compare store offers"
+            side={`${product.offers.length} stores`}
+          />
+          <div className="space-y-3">
+            {product.offers.map((o) => (
+              <article
+                key={o.store}
+                className={`rounded-2xl border bg-white p-4 ${o.best ? "border-emerald-300 ring-2 ring-emerald-100" : "border-[#ece9f2]"}`}
+              >
+                <div className="flex items-center gap-3">
+                  <span className="grid h-11 w-11 place-items-center rounded-xl bg-violet-50 font-black text-violet-600">
+                    {o.store[0]}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="flex items-center gap-2">
+                      <b className="text-sm">{o.store}</b>
+                      {o.best && (
+                        <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[9px] font-black text-emerald-700">
+                          BEST VALUE
+                        </span>
+                      )}
+                    </span>
+                    <span className="mt-1 block text-xs text-slate-500">
+                      Price {o.price}
+                    </span>
+                  </span>
+                  <span className="text-right">
+                    <b className="block text-sm text-emerald-600">
+                      Earn {o.earning}
+                    </b>
+                    <button
+                      onClick={() => {
+                        notify(`${o.store} store visit tracked in this demo`);
+                        setShopView("tracking");
+                        setSelected(null);
+                      }}
+                      className="mt-1 inline-flex items-center gap-1 text-xs font-bold text-violet-600"
+                    >
+                      Shop now
+                      <ExternalLink className="h-3 w-3" />
+                    </button>
+                  </span>
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
+        <InfoCard
+          title="Before you shop"
+          lines={[
+            "Always open the store through Glonni Ads",
+            "Complete the purchase in the same session",
+            "Earnings are confirmed after the return period",
+            "Prices and cashback can change before checkout—verify on the store",
+          ]}
+        />
+      </div>
+    );
+  return (
+    <div className="space-y-5">
+      <Hero
+        icon={ShoppingBag}
+        eyebrow="SHOP & EARN"
+        title="Compare prices. Earn more."
+        body="Find the best store price and see your estimated earnings before you buy."
+        action="Browse top deals"
+        onClick={() =>
+          document
+            .getElementById("shop-products")
+            ?.scrollIntoView({ behavior: "smooth" })
+        }
+      />
+      <div className="grid grid-cols-3 gap-2">
+        <button onClick={() => setShopView("tracking")} className="rounded-2xl border border-[#ece9f2] bg-white p-3 text-left"><PackageCheck className="h-5 w-5 text-violet-600" /><b className="mt-2 block text-xs">Track purchase</b><span className="text-[10px] text-slate-500">1 active</span></button>
+        <button onClick={() => { setCategory("All"); setQuery(""); notify(`${saved.length} saved product${saved.length === 1 ? "" : "s"}`); }} className="rounded-2xl border border-[#ece9f2] bg-white p-3 text-left"><Heart className="h-5 w-5 text-rose-500" /><b className="mt-2 block text-xs">Saved</b><span className="text-[10px] text-slate-500">{saved.length} products</span></button>
+        <button onClick={() => setSelected("boAt Airdopes 141")} className="rounded-2xl border border-[#ece9f2] bg-white p-3 text-left"><History className="h-5 w-5 text-amber-500" /><b className="mt-2 block text-xs">Viewed</b><span className="text-[10px] text-slate-500">See recent</span></button>
+      </div>
+      <div className="relative">
+        <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+        <input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          aria-label="Search products or stores"
+          placeholder="Search products or categories"
+          className="w-full rounded-2xl border border-[#ece9f2] bg-white py-3.5 pl-11 pr-11 text-sm outline-none focus:border-violet-400"
+        />
+        {query && (
+          <button
+            aria-label="Clear search"
+            onClick={() => setQuery("")}
+            className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        )}
+      </div>
+      <div className="no-scrollbar flex gap-2 overflow-x-auto">
+        {categories.map((c) => (
+          <button
+            onClick={() => setCategory(c)}
+            key={c}
+            className={`whitespace-nowrap rounded-full px-4 py-2.5 text-xs font-bold ${category === c ? "bg-[#241b38] text-white" : "border border-[#ece9f2] bg-white text-slate-600"}`}
+          >
+            {c}
+          </button>
+        ))}
+      </div>
+      <label className="flex items-center gap-3 rounded-2xl border border-[#ece9f2] bg-white px-4 py-3">
+        <SlidersHorizontal className="h-4 w-4 text-violet-600" />
+        <span className="text-xs font-extrabold text-slate-600">Sort by</span>
+        <select value={sort} onChange={(e) => setSort(e.target.value)} className="ml-auto bg-transparent text-xs font-extrabold text-[#241d34] outline-none" aria-label="Sort products">
+          {["Recommended", "Lowest price", "Highest cashback", "Popular"].map((option) => <option key={option}>{option}</option>)}
+        </select>
+      </label>
+      <section>
+        <SectionTitle
+          title="Top stores"
+          side="View all"
+          onSide={() => open("stores")}
+        />
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+          {stores.map((s) => (
+            <button
+              onClick={() => notify(`${s.name} affiliate feed coming soon`)}
+              key={s.name}
+              className="rounded-2xl border border-[#ece9f2] bg-white p-4 text-left"
+            >
+              <span
+                className={`grid h-11 w-11 place-items-center rounded-xl text-xl font-black ${s.color}`}
+              >
+                {s.letter}
+              </span>
+              <b className="mt-3 block text-sm text-[#282133]">{s.name}</b>
+              <span className="text-xs font-semibold text-emerald-600">
+                {s.rate} cashback
+              </span>
+            </button>
+          ))}
+        </div>
+      </section>
+      <section id="shop-products">
+        <SectionTitle title="Compare & earn" side={`${visible.length} deals`} />
+        {visible.length ? (
+          <div className="grid gap-3 md:grid-cols-2">
+            {visible.map((p) => (
+              <article
+                key={p.name}
+                className="relative rounded-2xl border border-[#ece9f2] bg-white p-4 text-left transition hover:-translate-y-0.5 hover:border-violet-200 hover:shadow-md"
+              >
+                <button onClick={() => toggleSaved(p.name)} aria-label={saved.includes(p.name) ? `Remove ${p.name} from saved` : `Save ${p.name}`} className={`absolute right-3 top-3 z-10 grid h-9 w-9 place-items-center rounded-full bg-white shadow-sm ${saved.includes(p.name) ? "text-rose-600" : "text-slate-400"}`}><Heart className={`h-4 w-4 ${saved.includes(p.name) ? "fill-current" : ""}`} /></button>
+                <button onClick={() => setSelected(p.name)} className="w-full text-left">
+                <div className="flex gap-3">
+                  <span className="grid h-16 w-16 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-violet-50 to-pink-50 text-3xl">
+                    {p.icon}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-violet-500">
+                      {p.category}
+                    </span>
+                    <b className="mt-0.5 block truncate text-sm text-[#282133]">
+                      {p.name}
+                    </b>
+                    <span className="text-xs text-slate-500">{p.subtitle}</span>
+                  </span>
+                </div>
+                <div className="mt-4 flex items-end justify-between border-t border-[#f0edf5] pt-3">
+                  <span>
+                    <span className="block text-[10px] text-slate-400">
+                      Best price
+                    </span>
+                    <b className="text-base text-[#241d34]">{p.best}</b>
+                  </span>
+                  <span className="rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-black text-emerald-700">
+                    Earn {p.earn}
+                  </span>
+                </div>
+                </button>
+              </article>
+            ))}
+          </div>
+        ) : (
+          <EmptyState
+            icon={Search}
+            title="No matching deals"
+            body="Try another product name or category."
+          />
+        )}
+      </section>
+      <p className="rounded-2xl bg-amber-50 px-4 py-3 text-[11px] leading-5 text-amber-800"><b>Price & cashback disclaimer:</b> Estimates are based on demo partner data. The store’s checkout price and Glonni tracking confirmation determine the final reward.</p>
+      <section className="rounded-2xl border border-[#ece9f2] bg-white p-5">
+        <SectionTitle title="How it works" />
+        {[
+          [Store, "Choose a store", "Compare cashback and prices"],
+          [CreditCard, "Complete purchase", "Shop on the partner website"],
+          [Coins, "Earn cashback", "Reward appears after confirmation"],
+        ].map(([Icon, title, body], i) => (
+          <div key={String(title)} className="flex gap-3 py-3">
+            <span className="grid h-10 w-10 place-items-center rounded-xl bg-violet-100 text-violet-600">
+              <Icon className="h-5 w-5" />
+            </span>
+            <span>
+              <b className="block text-sm text-[#292236]">
+                {i + 1}. {String(title)}
+              </b>
+              <span className="text-xs text-slate-500">{String(body)}</span>
+            </span>
+          </div>
+        ))}
+      </section>
+    </div>
+  );
+}
+
+function GamesScreen({ notify }: { notify: (m: string) => void }) {
+  const [filter, setFilter] = useState("All games");
+  const [selected, setSelected] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
+  const [trackedGames, setTrackedGames] = useState<string[]>([
+    "Puzzle Quest",
+    "Word Master",
+    "Ludo Club",
+  ]);
+  const [reportOpen, setReportOpen] = useState(false);
+  const [reportReason, setReportReason] = useState("");
+  const games = [
+    {
+      name: "Puzzle Quest",
+      category: "Puzzle",
+      goal: "Complete level 10",
+      reward: "₹50",
+      icon: "🧩",
+      tag: "Trending",
+      time: "25–35 min",
+      players: "12.4K",
+      progress: 4,
+      total: 10,
+      expires: "5 days 8 hours",
+      trackingId: "GM-PQ-48291",
+      milestones: [
+        ["Installed & opened", "Verified", "₹0"],
+        ["Reach level 5", "In progress", "₹15"],
+        ["Complete level 10", "Locked", "₹35"],
+      ],
+      steps: [
+        "Install and open the game",
+        "Reach level 5 to unlock tracking",
+        "Complete level 10 within 7 days",
+      ],
+    },
+    {
+      name: "Cricket League",
+      category: "Sports",
+      goal: "Win 3 matches",
+      reward: "₹35",
+      icon: "🏏",
+      tag: "New",
+      time: "15–20 min",
+      players: "8.1K",
+      progress: 0,
+      total: 3,
+      expires: "7 days",
+      trackingId: "Not started",
+      milestones: [
+        ["Install & finish practice", "Ready", "₹5"],
+        ["Win first match", "Locked", "₹10"],
+        ["Win 3 matches", "Locked", "₹20"],
+      ],
+      steps: [
+        "Install through Glonni Ads",
+        "Finish the practice match",
+        "Win 3 multiplayer matches",
+      ],
+    },
+    {
+      name: "Word Master",
+      category: "Word",
+      goal: "Find 500 words",
+      reward: "₹25",
+      icon: "🔤",
+      tag: "Trending",
+      time: "20–30 min",
+      players: "6.8K",
+      progress: 180,
+      total: 500,
+      expires: "3 days 14 hours",
+      trackingId: "GM-WM-73104",
+      milestones: [
+        ["Tutorial completed", "Verified", "₹5"],
+        ["Find 250 words", "In progress", "₹8"],
+        ["Find 500 words", "Locked", "₹12"],
+      ],
+      steps: [
+        "Open the tracked game link",
+        "Complete the tutorial",
+        "Find a total of 500 words",
+      ],
+    },
+    {
+      name: "Ludo Club",
+      category: "Board",
+      goal: "Win 5 games",
+      reward: "₹40",
+      icon: "🎲",
+      tag: "Top paying",
+      time: "30–45 min",
+      players: "15.2K",
+      progress: 2,
+      total: 5,
+      expires: "8 days 2 hours",
+      trackingId: "GM-LC-62018",
+      milestones: [
+        ["Player ID created", "Verified", "₹5"],
+        ["Win 3 games", "In progress", "₹15"],
+        ["Win 5 games", "Locked", "₹20"],
+      ],
+      steps: [
+        "Install and create your player ID",
+        "Play only eligible classic matches",
+        "Win 5 matches within 10 days",
+      ],
+    },
+  ];
+  const visible = games.filter(
+    (g) =>
+      (filter === "All games" || g.tag === filter) &&
+      `${g.name} ${g.goal} ${g.tag}`
+        .toLowerCase()
+        .includes(query.toLowerCase()),
+  );
+  const game = games.find((g) => g.name === selected);
+  if (game) {
+    const pct = Math.min(100, (game.progress / game.total) * 100);
+    const isTracked = trackedGames.includes(game.name);
+    return (
+      <div className="mx-auto max-w-2xl space-y-5">
+        <button
+          onClick={() => setSelected(null)}
+          className="inline-flex items-center gap-2 text-sm font-bold text-violet-600"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back to games
+        </button>
+        <section
+          className={`relative overflow-hidden rounded-[28px] bg-gradient-to-br ${purple} p-6 text-white`}
+        >
+          <div className="absolute -right-8 -top-10 text-[120px] opacity-15">
+            {game.icon}
+          </div>
+          <div className="relative">
+            <span className="grid h-16 w-16 place-items-center rounded-2xl bg-white/15 text-4xl">
+              {game.icon}
+            </span>
+            <span className="mt-5 inline-block rounded-full bg-white/15 px-3 py-1 text-[10px] font-black uppercase tracking-wider">
+              {game.tag}
+            </span>
+            <h2 className="mt-2 text-3xl font-black">{game.name}</h2>
+            <p className="mt-1 text-sm text-white/75">
+              {game.category} game · {game.players} players
+            </p>
+            <div className="mt-5 flex items-end justify-between">
+              <span>
+                <span className="block text-xs text-white/70">
+                  Mission reward
+                </span>
+                <b className="text-3xl">{game.reward}</b>
+              </span>
+              <span className="rounded-2xl bg-white px-4 py-2 text-xs font-black text-violet-700">
+                {game.goal}
+              </span>
+            </div>
+          </div>
+        </section>
+        <section className="rounded-2xl border border-[#ece9f2] bg-white p-5">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-2 border-b border-[#f0edf5] pb-4">
+            <span className="inline-flex items-center gap-2 text-xs font-bold text-emerald-700">
+              <ShieldCheck className="h-4 w-4" /> New-install eligibility checked
+            </span>
+            <span className="inline-flex items-center gap-1 text-xs font-bold text-amber-700">
+              <CalendarClock className="h-4 w-4" /> Expires in {game.expires}
+            </span>
+          </div>
+          <div className="flex items-center justify-between">
+            <div>
+              <b className="text-sm">Mission progress</b>
+              <p className="mt-1 text-xs text-slate-500">
+                {game.progress} of {game.total} completed
+              </p>
+            </div>
+            <span className="text-lg font-black text-violet-600">
+              {Math.round(pct)}%
+            </span>
+          </div>
+          <div className="mt-4 h-2.5 overflow-hidden rounded-full bg-violet-100">
+            <div
+              className={`h-full rounded-full bg-gradient-to-r ${purple}`}
+              style={{ width: `${pct}%` }}
+            />
+          </div>
+          {isTracked && (
+            <div className="mt-4 rounded-xl bg-emerald-50 p-3 text-xs text-emerald-800">
+              <b className="block">Tracking active on this device</b>
+              Reference: {game.trackingId} · Last synced just now
+            </div>
+          )}
+        </section>
+        <section>
+          <SectionTitle title="Milestone rewards" side="Demo progress" />
+          <div className="space-y-3">
+            {game.milestones.map(([title, status, reward], index) => (
+              <div key={title} className="flex items-center gap-3 rounded-2xl border border-[#ece9f2] bg-white p-4">
+                <span className={`grid h-9 w-9 place-items-center rounded-full ${status === "Verified" ? "bg-emerald-100 text-emerald-700" : status === "In progress" || status === "Ready" ? "bg-violet-100 text-violet-700" : "bg-slate-100 text-slate-400"}`}>
+                  {status === "Verified" ? <CheckCircle2 className="h-5 w-5" /> : index + 1}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <b className="block text-sm">{title}</b>
+                  <span className="text-xs text-slate-500">{status} · partner verification may take up to 24 hours</span>
+                </span>
+                <b className="text-sm text-violet-700">{reward}</b>
+              </div>
+            ))}
+          </div>
+        </section>
+        <section>
+          <SectionTitle title="How to earn" side={game.time} />
+          <div className="space-y-3">
+            {game.steps.map((step, index) => (
+              <div
+                key={step}
+                className="flex gap-3 rounded-2xl border border-[#ece9f2] bg-white p-4"
+              >
+                <span
+                  className={`grid h-9 w-9 shrink-0 place-items-center rounded-full text-sm font-black ${index === 0 ? "bg-violet-600 text-white" : "bg-violet-50 text-violet-600"}`}
+                >
+                  {index + 1}
+                </span>
+                <span>
+                  <b className="block text-sm">{step}</b>
+                  <span className="mt-1 block text-xs text-slate-500">
+                    Progress is verified automatically by the game partner.
+                  </span>
+                </span>
+              </div>
+            ))}
+          </div>
+        </section>
+        <InfoCard
+          title="Important requirements"
+          lines={[
+            "Start the game only through Glonni Ads",
+            "Use the same device until the mission is complete",
+            "New users only; reinstalling does not qualify",
+          ]}
+        />
+        <PrimaryButton
+          onClick={() => {
+            if (!isTracked) {
+              setTrackedGames((current) => [...current, game.name]);
+              notify(`Tracking started · ${game.name}`);
+              return;
+            }
+            notify(`Opening ${game.name} with tracking active`);
+          }}
+        >
+          {isTracked ? "Continue playing with tracking" : "Start tracked mission"}
+        </PrimaryButton>
+        {isTracked && (
+          <button onClick={() => setReportOpen(true)} className="w-full rounded-2xl border border-violet-200 bg-white px-4 py-3 text-sm font-bold text-violet-700">
+            Report missing game reward
+          </button>
+        )}
+        <p className="rounded-2xl bg-amber-50 px-4 py-3 text-[11px] leading-5 text-amber-800"><b>Demo notice:</b> Game progress and rewards are sample data. Real verification will begin after a game partner is connected.</p>
+        {reportOpen && (
+          <div role="dialog" aria-modal="true" aria-label="Report missing game reward" className="fixed inset-0 z-50 grid place-items-end bg-slate-950/45 p-4 sm:place-items-center">
+            <div className="w-full max-w-md rounded-[28px] bg-white p-5 shadow-2xl">
+              <div className="flex items-start justify-between gap-3">
+                <div><h3 className="text-lg font-black">Missing game reward</h3><p className="mt-1 text-xs text-slate-500">Reference {game.trackingId}</p></div>
+                <button aria-label="Close report" onClick={() => setReportOpen(false)} className="grid h-9 w-9 place-items-center rounded-full bg-slate-100"><X className="h-4 w-4" /></button>
+              </div>
+              <label className="mt-5 block text-xs font-bold text-slate-600">What went wrong?</label>
+              <select value={reportReason} onChange={(event) => setReportReason(event.target.value)} className="mt-2 w-full rounded-2xl border border-[#e8e4ee] bg-white p-3 text-sm outline-none focus:border-violet-400">
+                <option value="">Select a reason</option>
+                <option>Milestone completed but not verified</option>
+                <option>Progress stopped updating</option>
+                <option>Reward approved but not credited</option>
+              </select>
+              <button disabled={!reportReason} onClick={() => { setReportOpen(false); setReportReason(""); notify("Game reward report submitted · GR-20841"); }} className="mt-4 w-full rounded-2xl bg-violet-600 px-4 py-3 text-sm font-black text-white disabled:cursor-not-allowed disabled:opacity-40">Submit report</button>
+              <p className="mt-3 text-center text-[11px] text-slate-500">Please report only after the 24-hour verification window.</p>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+  return (
+    <div className="space-y-5">
+      <Hero
+        icon={Gamepad2}
+        eyebrow="PLAY & EARN"
+        title="Play games. Complete missions."
+        body="Discover fun challenges and unlock rewards as you progress."
+        action="Explore games"
+        onClick={() =>
+          document
+            .getElementById("game-list")
+            ?.scrollIntoView({ behavior: "smooth" })
+        }
+      />
+      <div className="grid grid-cols-3 gap-3">
+        <Metric label="In progress" value="3" />
+        <Metric label="Completed" value="0" />
+        <Metric label="Earned" value="₹0" />
+      </div>
+      <section>
+        <SectionTitle title="Continue playing" side="3 active" />
+        <div className="no-scrollbar flex gap-3 overflow-x-auto pb-1">
+          {games.filter((g) => trackedGames.includes(g.name)).map((g) => (
+            <button key={g.name} onClick={() => setSelected(g.name)} className="min-w-[220px] rounded-2xl border border-violet-100 bg-white p-4 text-left shadow-sm">
+              <div className="flex items-center gap-3"><span className="text-3xl">{g.icon}</span><span><b className="block text-sm">{g.name}</b><span className="text-[11px] text-slate-500">Expires in {g.expires}</span></span></div>
+              <div className="mt-3 h-2 overflow-hidden rounded-full bg-violet-100"><div className="h-full rounded-full bg-violet-600" style={{ width: `${Math.min(100, (g.progress / g.total) * 100)}%` }} /></div>
+              <span className="mt-2 block text-xs font-bold text-violet-700">Continue tracked mission</span>
+            </button>
+          ))}
+        </div>
+      </section>
+      <section className="rounded-2xl border border-amber-100 bg-gradient-to-r from-amber-50 to-orange-50 p-4">
+        <div className="flex items-center gap-3">
+          <span className="grid h-11 w-11 place-items-center rounded-xl bg-amber-400 text-white">
+            <Trophy className="h-6 w-6" />
+          </span>
+          <span className="flex-1">
+            <b className="block text-sm text-amber-900">
+              Weekly game challenge
+            </b>
+            <span className="text-xs text-amber-700">
+              Complete 3 missions to unlock a bonus.
+            </span>
+          </span>
+          <span className="text-sm font-black text-amber-700">0 / 3</span>
+        </div>
+      </section>
+      <div className="relative">
+        <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+        <input
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          aria-label="Search games"
+          placeholder="Search games or missions"
+          className="w-full rounded-2xl border border-[#ece9f2] bg-white py-3.5 pl-11 pr-11 text-sm outline-none focus:border-violet-400"
+        />
+        {query && (
+          <button
+            onClick={() => setQuery("")}
+            aria-label="Clear game search"
+            className="absolute right-3 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-full bg-slate-100 text-slate-500"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        )}
+      </div>
+      <div className="no-scrollbar flex gap-2 overflow-x-auto">
+        {["All games", "Trending", "Top paying", "New"].map((t) => (
+          <button
+            onClick={() => setFilter(t)}
+            key={t}
+            className={`whitespace-nowrap rounded-full px-4 py-2 text-xs font-bold ${filter === t ? "bg-[#241b38] text-white" : "border border-[#ece9f2] bg-white text-slate-600"}`}
+          >
+            {t}
+          </button>
+        ))}
+      </div>
+      <div id="game-list" className="grid gap-3 md:grid-cols-2">
+        {visible.map((g) => (
+          <button
+            onClick={() => setSelected(g.name)}
+            key={g.name}
+            className="rounded-2xl border border-[#ece9f2] bg-white p-4 text-left transition hover:-translate-y-0.5 hover:shadow-md"
+          >
+            <div className="flex items-start gap-3">
+              <span className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-violet-100 to-pink-100 text-3xl">
+                {g.icon}
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="inline-block rounded-full bg-violet-50 px-2 py-0.5 text-[9px] font-black uppercase text-violet-600">
+                  {g.tag}
+                </span>
+                <b className="mt-1 block text-sm text-[#282133]">{g.name}</b>
+                <span className="text-xs text-slate-500">{g.goal}</span>
+              </span>
+              <ChevronRight className="h-5 w-5 text-slate-300" />
+            </div>
+            <div className="mt-4 flex items-center justify-between border-t border-[#f0edf5] pt-3">
+              <span className="flex items-center gap-1 text-[11px] font-bold text-slate-500">
+                <Timer className="h-3.5 w-3.5" />
+                {g.time}
+              </span>
+              <span className="text-sm font-black text-violet-600">
+                Earn {g.reward}
+              </span>
+            </div>
+          </button>
+        ))}
+      </div>
+      {visible.length === 0 && (
+        <EmptyState
+          icon={Gamepad2}
+          title="No games in this category"
+          body="Try another filter to see available game missions."
+        />
+      )}
+    </div>
+  );
+}
+
+function ProfileScreen({
+  open,
+  userName,
+}: {
+  open: (detail: DetailKey) => void;
+  userName: string;
+}) {
+  const account = [
+    {
+      icon: CircleUserRound,
+      title: "Personal information",
+      body: "Name, mobile number and email",
+      key: "personal",
+    },
+    {
+      icon: Wallet,
+      title: "Wallet",
+      body: "Balance and withdrawals",
+      key: "wallet",
+    },
+    {
+      icon: BadgeCheck,
+      title: "Reward status",
+      body: "Pending, credited and rejected rewards",
+      key: "earnings",
+    },
+    {
+      icon: History,
+      title: "Earning history",
+      body: "All reward activity",
+      key: "history",
+    },
+    {
+      icon: Landmark,
+      title: "UPI / Bank details",
+      body: "Manage payout account",
+      key: "payout",
+    },
+    {
+      icon: ShieldCheck,
+      title: "KYC verification",
+      body: "1 of 4 steps complete",
+      key: "kyc",
+    },
+  ] as const;
+  const settings = [
+    {
+      icon: Settings2,
+      title: "Personalization & settings",
+      body: "Theme, alerts, interests and data use",
+      key: "preferences",
+    },
+    { icon: Languages, title: "Language", body: "English", key: "language" },
+    {
+      icon: CircleHelp,
+      title: "Help & support",
+      body: "FAQs and support tickets",
+      key: "support",
+    },
+    {
+      icon: ShieldCheck,
+      title: "Trust & safety",
+      body: "Rules, warnings, appeals and account control",
+      key: "safety",
+    },
+    {
+      icon: FileText,
+      title: "Terms & privacy",
+      body: "Policies and account rules",
+      key: "legal",
+    },
+  ] as const;
+  const menu = (items: typeof account | typeof settings) => (
+    <div className="overflow-hidden rounded-2xl border border-[#ece9f2] bg-white">
+      {items.map(({ icon: Icon, title, body, key }) => (
+        <button
+          onClick={() => open(key)}
+          key={title}
+          className="flex w-full items-center gap-3 border-b border-[#f0edf5] p-4 text-left transition last:border-0 hover:bg-violet-50/40"
+        >
+          <span className="grid h-11 w-11 place-items-center rounded-xl bg-violet-50 text-violet-600">
+            <Icon className="h-5 w-5" />
+          </span>
+          <span className="flex-1">
+            <b className="block text-sm text-[#282133]">{title}</b>
+            <span className="text-xs text-slate-500">{body}</span>
+          </span>
+          <ChevronRight className="h-5 w-5 text-slate-300" />
+        </button>
+      ))}
+    </div>
+  );
+  return (
+    <div className="space-y-5">
+      <section
+        className={`rounded-[28px] bg-gradient-to-br ${purple} p-6 text-white`}
+      >
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => open("personal")}
+            aria-label="Edit profile photo"
+            className="relative grid h-16 w-16 place-items-center rounded-full bg-white/20"
+          >
+            <CircleUserRound className="h-9 w-9" />
+            <span className="absolute -bottom-1 -right-1 grid h-6 w-6 place-items-center rounded-full bg-white text-violet-600">
+              <Camera className="h-3.5 w-3.5" />
+            </span>
+          </button>
+          <span className="flex-1">
+            <b className="block text-xl">{userName}</b>
+            <span className="mt-1 flex items-center gap-1 text-xs text-white/75">
+              <BadgeCheck className="h-4 w-4" /> Demo member account
+            </span>
+          </span>
+          <button
+            onClick={() => open("personal")}
+            className="rounded-full bg-white/15 px-3 py-2 text-xs font-extrabold"
+          >
+            Edit
+          </button>
+        </div>
+        <div className="mt-5 grid grid-cols-2 gap-3">
+          <div className="rounded-2xl bg-white/10 p-3">
+            <span className="text-xs text-white/70">Available balance</span>
+            <b className="mt-1 block text-xl">₹0.00</b>
+          </div>
+          <div className="rounded-2xl bg-white/10 p-3">
+            <span className="text-xs text-white/70">KYC status</span>
+            <b className="mt-1 block text-xl">25%</b>
+          </div>
+        </div>
+      </section>
+      <section>
+        <SectionTitle title="Account & rewards" />
+        {menu(account)}
+      </section>
+      <section>
+        <SectionTitle title="Settings & support" />
+        {menu(settings)}
+      </section>
+      <button
+        onClick={() => open("logout")}
+        className="flex w-full items-center justify-center gap-2 rounded-2xl border border-rose-100 bg-white py-4 text-sm font-extrabold text-rose-500"
+      >
+        <LogOut className="h-4 w-4" />
+        Log out
+      </button>
+      <div className="flex items-center gap-3 rounded-2xl bg-emerald-50 p-4 text-emerald-800">
+        <LockKeyhole className="h-5 w-5" />
+        <p className="text-xs leading-5">
+          <b className="block">Your rewards stay protected</b>Secure
+          verification will be required before withdrawal.
+        </p>
+      </div>
+      <p className="text-center text-[10px] font-semibold text-slate-400">
+        Glonni Ads v0.1 · Frontend preview
+      </p>
+    </div>
+  );
+}
+
+function WalletExperience({
+  open,
+  notify,
+}: {
+  open: (detail: DetailKey) => void;
+  notify: (message: string) => void;
+}) {
+  const [step, setStep] = useState<"overview" | "amount" | "review" | "status">(
+    "overview",
+  );
+  const [amount, setAmount] = useState("500");
+  const [method, setMethod] = useState<"upi" | "bank">("upi");
+  const [status, setStatus] = useState<"pending" | "success" | "failed">(
+    "pending",
+  );
+  const [receiptOpen, setReceiptOpen] = useState(false);
+  const numericAmount = Number(amount) || 0;
+  const canContinue = numericAmount >= 500;
+  if (step === "status") {
+    const states = {
+      pending: {
+        icon: Timer,
+        title: "Withdrawal submitted",
+        body: "Security review is in progress. Expected approval by 9 Aug, 6:00 PM; payout should arrive by 12 Aug.",
+        tone: "bg-amber-100 text-amber-600",
+        label: "Pending",
+      },
+      success: {
+        icon: CheckCircle2,
+        title: "Withdrawal successful",
+        body: "The payout was sent to your verified account. Keep the receipt and provider reference for support.",
+        tone: "bg-emerald-100 text-emerald-600",
+        label: "Paid",
+      },
+      failed: {
+        icon: X,
+        title: "Withdrawal failed",
+        body: "The provider rejected this attempt. No fee was charged and the full amount has been returned to your available balance.",
+        tone: "bg-rose-100 text-rose-600",
+        label: "Failed",
+      },
+    } as const;
+    const current = states[status];
+    const StatusIcon = current.icon;
+    return (
+      <div className="mx-auto max-w-2xl space-y-5">
+        <section className="rounded-[28px] border border-[#ece9f2] bg-white p-7 text-center">
+          <span
+            className={`mx-auto grid h-20 w-20 place-items-center rounded-full ${current.tone}`}
+          >
+            <StatusIcon className="h-10 w-10" />
+          </span>
+          <span
+            className={`mt-5 inline-block rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wider ${current.tone}`}
+          >
+            {current.label}
+          </span>
+          <h2 className="mt-3 text-2xl font-black text-[#241d34]">
+            {current.title}
+          </h2>
+          <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-slate-500">
+            {current.body}
+          </p>
+          <div className="mt-6 rounded-2xl bg-[#f8f7fb] p-4 text-left">
+            <SummaryRow label="Amount" value={`₹${numericAmount.toFixed(2)}`} />
+            <SummaryRow label="Fee charged" value="₹0.00" />
+            <SummaryRow
+              label="Payout to"
+              value={method === "upi" ? "Verified UPI · sha•••@upi" : "Verified bank · •••• 4582"}
+            />
+            <SummaryRow label="Glonni reference" value="GLN-WD-000128" />
+            <SummaryRow label="Provider reference" value={status === "success" ? "UTR 628491730152" : "Assigned after payout"} last />
+          </div>
+          <button onClick={() => setReceiptOpen(!receiptOpen)} className="mt-4 text-xs font-extrabold text-violet-600">
+            {receiptOpen ? "Hide" : "View"} complete receipt
+          </button>
+          {receiptOpen && <div className="mt-4 rounded-2xl border border-dashed border-violet-200 p-4 text-left text-xs leading-5 text-slate-600">
+            <b className="block text-sm text-[#282133]">Withdrawal receipt</b>
+            <p>Requested: 8 Aug 2026 · 4:30 PM</p><p>Expected arrival: 1–3 working days after approval</p><p>Status updates: App notification + SMS</p>
+            <button onClick={() => notify("Receipt download will be enabled with real payout data")} className="mt-3 inline-flex items-center gap-2 font-extrabold text-violet-600"><Download className="h-4 w-4" />Download receipt</button>
+          </div>}
+        </section>
+        {status === "failed" && <section className="rounded-2xl border border-rose-100 bg-rose-50 p-4">
+          <b className="text-sm text-rose-900">What can you do?</b><p className="mt-1 text-xs leading-5 text-rose-700">Check that the payout account is active and its name matches KYC. If retry fails, share GLN-WD-000128 with support.</p>
+          <div className="mt-3 grid grid-cols-2 gap-2"><button onClick={() => { setStatus("pending"); notify("Demo withdrawal submitted again"); }} className="rounded-xl bg-rose-600 py-2.5 text-xs font-extrabold text-white">Retry payout</button><button onClick={() => open("support")} className="rounded-xl bg-white py-2.5 text-xs font-extrabold text-rose-600">Contact support</button></div>
+        </section>}
+        <section className="rounded-2xl border border-violet-100 bg-violet-50 p-4">
+          <b className="text-sm text-violet-900">Preview all status screens</b>
+          <p className="mt-1 text-xs text-violet-700">
+            These are frontend previews until secure payouts are connected.
+          </p>
+          <div className="mt-3 grid grid-cols-3 gap-2">
+            {(["pending", "success", "failed"] as const).map((item) => (
+              <button
+                key={item}
+                onClick={() => setStatus(item)}
+                className={`rounded-xl py-2 text-xs font-extrabold capitalize ${status === item ? "bg-violet-600 text-white" : "bg-white text-violet-600"}`}
+              >
+                {item}
+              </button>
+            ))}
+          </div>
+        </section>
+        <button
+          onClick={() => setStep("overview")}
+          className="w-full rounded-xl border border-violet-200 py-3 text-sm font-extrabold text-violet-600"
+        >
+          Back to wallet
+        </button>
+      </div>
+    );
+  }
+  if (step === "amount" || step === "review")
+    return (
+      <div className="mx-auto max-w-2xl space-y-5">
+        <button
+          onClick={() => setStep(step === "review" ? "amount" : "overview")}
+          className="inline-flex items-center gap-2 text-sm font-bold text-violet-600"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back
+        </button>
+        <section className="rounded-[26px] border border-violet-100 bg-gradient-to-br from-violet-50 to-white p-5">
+          <span className="text-[10px] font-black tracking-[.16em] text-violet-500">
+            WITHDRAW REWARDS
+          </span>
+          <h2 className="mt-2 text-2xl font-black text-[#241d34]">
+            {step === "amount"
+              ? "Enter withdrawal amount"
+              : "Review your request"}
+          </h2>
+          <p className="mt-2 text-sm text-slate-500">
+            Available balance: ₹0.00 · Minimum withdrawal: ₹500
+          </p>
+        </section>
+        {step === "amount" ? (
+          <>
+            <section className="rounded-2xl border border-[#ece9f2] bg-white p-5">
+              <label className="text-xs font-bold text-slate-600">Amount</label>
+              <div className="mt-2 flex items-center rounded-2xl border border-[#e8e4ef] px-4 focus-within:border-violet-400">
+                <span className="text-xl font-black text-slate-500">₹</span>
+                <input
+                  inputMode="numeric"
+                  value={amount}
+                  onChange={(event) =>
+                    setAmount(event.target.value.replace(/\D/g, ""))
+                  }
+                  className="min-w-0 flex-1 bg-transparent px-3 py-4 text-2xl font-black outline-none"
+                />
+                <button
+                  onClick={() => setAmount("500")}
+                  className="rounded-full bg-violet-50 px-3 py-1.5 text-xs font-extrabold text-violet-600"
+                >
+                  MIN
+                </button>
+              </div>
+              {!canContinue && (
+                <p className="mt-2 text-xs font-bold text-rose-500">
+                  Enter at least ₹500.
+                </p>
+              )}
+              <div className="mt-4 grid grid-cols-3 gap-2">
+                {[500, 750, 1000].map((value) => (
+                  <button
+                    key={value}
+                    onClick={() => setAmount(String(value))}
+                    className="rounded-xl border border-violet-100 py-2 text-xs font-bold text-violet-600"
+                  >
+                    ₹{value}
+                  </button>
+                ))}
+              </div>
+            </section>
+            <section>
+              <SectionTitle title="Payout method" />
+              <div className="space-y-3">
+                <PayoutChoice
+                  active={method === "upi"}
+                  icon={Smartphone}
+                  title="UPI · Verified"
+                  body="sha•••@upi · Usually within 24 hours"
+                  onClick={() => setMethod("upi")}
+                />
+                <PayoutChoice
+                  active={method === "bank"}
+                  icon={Landmark}
+                  title="Bank account · Verified"
+                  body="•••• 4582 · 1–3 working days"
+                  onClick={() => setMethod("bank")}
+                />
+              </div>
+              <button
+                onClick={() => open("payout")}
+                className="mt-3 text-xs font-extrabold text-violet-600"
+              >
+                + Manage payout methods
+              </button>
+            </section>
+            <div className="rounded-2xl bg-amber-50 p-4 text-xs leading-5 text-amber-800">
+              <b className="block">Demo balance is ₹0.00</b>You can preview the
+              request flow, but a real withdrawal will require sufficient
+              balance, completed KYC and backend verification.
+            </div>
+            <PrimaryButton
+              onClick={() =>
+                canContinue
+                  ? setStep("review")
+                  : notify("Minimum withdrawal is ₹500")
+              }
+            >
+              Review withdrawal
+            </PrimaryButton>
+          </>
+        ) : (
+          <>
+            <section className="rounded-2xl border border-[#ece9f2] bg-white p-5">
+              <SummaryRow
+                label="Withdrawal amount"
+                value={`₹${numericAmount.toFixed(2)}`}
+              />
+              <SummaryRow label="Processing fee" value="₹0.00" />
+              <SummaryRow
+                label="You receive"
+                value={`₹${numericAmount.toFixed(2)}`}
+              />
+              <SummaryRow label="Expected arrival" value={method === "upi" ? "Within 24 hours after approval" : "1–3 working days after approval"} />
+              <SummaryRow
+                label="Payout method"
+                value={
+                  method === "upi" ? "Verified UPI · sha•••@upi" : "Verified bank · •••• 4582"
+                }
+                last
+              />
+            </section>
+            <InfoCard
+              title="Before you confirm"
+              lines={[
+                "KYC must be verified before processing",
+                "Requests are checked for suspicious activity",
+                "Expected processing time is 1–3 working days",
+              ]}
+            />
+            <PrimaryButton
+              onClick={() => {
+                setStatus("pending");
+                setStep("status");
+              }}
+            >
+              Submit demo request
+            </PrimaryButton>
+          </>
+        )}
+      </div>
+    );
+  return (
+    <DetailShell
+      icon={Wallet}
+      title="₹0.00 available"
+      body="Track available, pending and lifetime rewards in one place."
+    >
+      <div className="grid grid-cols-3 gap-3">
+        <Metric label="Available" value="₹0.00" />
+        <Metric label="Pending" value="₹0.00" />
+        <Metric label="Lifetime" value="₹0.00" />
+      </div>
+      <section
+        className={`relative overflow-hidden rounded-[24px] bg-gradient-to-r ${purple} p-5 text-white`}
+      >
+        <div className="absolute -right-7 -top-8 h-28 w-28 rounded-full bg-white/10" />
+        <p className="text-xs font-semibold text-white/70">Ready to withdraw</p>
+        <div className="mt-1 flex items-end justify-between">
+          <b className="text-3xl">₹0.00</b>
+          <span className="rounded-full bg-white/15 px-3 py-1 text-[10px] font-black">
+            MIN ₹500
+          </span>
+        </div>
+        <div className="mt-4 h-2 overflow-hidden rounded-full bg-white/20">
+          <div className="h-full w-0 rounded-full bg-amber-300" />
+        </div>
+        <p className="mt-2 text-[11px] text-white/70">
+          Earn ₹500 more to unlock withdrawals
+        </p>
+      </section>
+      <section className="rounded-2xl border border-emerald-100 bg-emerald-50 p-4"><div className="flex gap-3"><BadgeCheck className="h-5 w-5 shrink-0 text-emerald-600" /><span><b className="block text-sm text-emerald-900">Payout protection</b><span className="mt-1 block text-xs leading-5 text-emerald-800">Verified payout methods · ₹0 processing fee · Full wallet refund if a payout fails</span></span></div></section>
+      <PrimaryButton onClick={() => setStep("amount")}> 
+        Preview withdrawal flow
+      </PrimaryButton>
+      <button
+        onClick={() => open("history")}
+        className="flex w-full items-center justify-between rounded-2xl border border-[#ece9f2] bg-white p-4 text-left"
+      >
+        <span className="flex items-center gap-3">
+          <span className="grid h-10 w-10 place-items-center rounded-xl bg-violet-50 text-violet-600">
+            <History className="h-5 w-5" />
+          </span>
+          <span>
+            <b className="block text-sm">Transaction history</b>
+            <span className="text-xs text-slate-500">
+              Rewards, withdrawals and refunds
+            </span>
+          </span>
+        </span>
+        <ChevronRight className="h-5 w-5 text-slate-300" />
+      </button>
+      <InfoCard
+        title="Withdrawal rules"
+        lines={[
+          "Minimum withdrawal is ₹500",
+          "Complete KYC and add a verified payout method",
+          "UPI and bank payouts take 1–3 working days",
+          "Failed payouts return to your available balance",
+        ]}
+      />
+    </DetailShell>
+  );
+}
+
+type RewardState = "Pending" | "Approved" | "Credited" | "Rejected";
+
+function EarningStatusExperience({
+  notify,
+}: {
+  notify: (message: string) => void;
+}) {
+  const [filter, setFilter] = useState<"All" | RewardState>("All");
+  const [selected, setSelected] = useState(0);
+  const [appealOpen, setAppealOpen] = useState(false);
+  const [appealReason, setAppealReason] = useState("");
+  const rewards = [
+    {
+      title: "Watch & Earn · Ad 12",
+      source: "Rewarded ad",
+      amount: "₹0.80",
+      status: "Pending" as RewardState,
+      submitted: "Today · 10:42 AM",
+      expected: "Expected by 6:00 PM today",
+      detail:
+        "The ad completion was recorded and is waiting for provider verification.",
+      reason:
+        "No action needed. Keep the app installed while verification completes.",
+    },
+    {
+      title: "Shopping habits survey",
+      source: "Survey",
+      amount: "₹12.00",
+      status: "Approved" as RewardState,
+      submitted: "Today · 9:18 AM",
+      expected: "Moves to wallet within 2 hours",
+      detail: "Your responses passed the provider quality review.",
+      reason: "Approved rewards are queued for the next wallet update.",
+    },
+    {
+      title: "Daily check-in · Day 3",
+      source: "Daily bonus",
+      amount: "₹1.00",
+      status: "Credited" as RewardState,
+      submitted: "7 Aug · 8:05 AM",
+      expected: "Credited 7 Aug · 8:06 AM",
+      detail: "This reward is available in your wallet balance.",
+      reason: "Reference GLN-RW-10421",
+    },
+    {
+      title: "Pocket Budget offer",
+      source: "App download",
+      amount: "₹45.00",
+      status: "Rejected" as RewardState,
+      submitted: "6 Aug · 6:20 PM",
+      expected: "Review completed 7 Aug",
+      detail:
+        "The provider could not confirm a first-time installation from the tracked link.",
+      reason:
+        "Possible previous install or tracking was interrupted before registration.",
+    },
+  ];
+  const visible = rewards
+    .map((reward, index) => ({ ...reward, index }))
+    .filter((reward) => filter === "All" || reward.status === filter);
+  const reward = rewards[selected];
+  const tones: Record<RewardState, string> = {
+    Pending: "bg-amber-100 text-amber-700",
+    Approved: "bg-sky-100 text-sky-700",
+    Credited: "bg-emerald-100 text-emerald-700",
+    Rejected: "bg-rose-100 text-rose-700",
+  };
+  const icons: Record<RewardState, LucideIcon> = {
+    Pending: Timer,
+    Approved: BadgeCheck,
+    Credited: CheckCircle2,
+    Rejected: AlertTriangle,
+  };
+  const StatusIcon = icons[reward.status];
+  const submitAppeal = () => {
+    if (appealReason.trim().length < 10)
+      return notify("Please add a little more detail");
+    setAppealOpen(false);
+    setAppealReason("");
+    notify("Demo appeal submitted · reference GLN-AP-0042");
+  };
+  return (
+    <div className="mx-auto max-w-3xl space-y-5">
+      <section
+        className={`relative overflow-hidden rounded-[28px] bg-gradient-to-br ${purple} p-6 text-white`}
+      >
+        <div className="absolute -right-10 -top-14 h-40 w-40 rounded-full bg-white/10" />
+        <span className="text-[10px] font-black tracking-[.18em] text-white/70">
+          REWARD TRACKER
+        </span>
+        <h2 className="mt-2 text-2xl font-black">Know where every rupee is</h2>
+        <p className="mt-2 max-w-lg text-sm leading-6 text-white/75">
+          See verification progress, expected credit time and the exact reason
+          if a reward needs attention.
+        </p>
+        <div className="mt-5 grid grid-cols-4 gap-2">
+          {(
+            [
+              ["Pending", "2"],
+              ["Approved", "1"],
+              ["Credited", "1"],
+              ["Rejected", "1"],
+            ] as const
+          ).map(([label, value]) => (
+            <div
+              key={label}
+              className="rounded-xl bg-white/10 p-2.5 text-center"
+            >
+              <b className="block text-lg">{value}</b>
+              <span className="text-[9px] font-bold text-white/70">
+                {label}
+              </span>
+            </div>
+          ))}
+        </div>
+      </section>
+      <section className="rounded-2xl border border-emerald-100 bg-emerald-50 p-4">
+        <div className="flex gap-3">
+          <ShieldCheck className="h-5 w-5 shrink-0 text-emerald-600" />
+          <span>
+            <b className="block text-sm text-emerald-900">
+              Eligibility check before you start
+            </b>
+            <span className="mt-1 block text-xs leading-5 text-emerald-800">
+              Account active · Device eligible · Daily limit available · No
+              duplicate completion detected
+            </span>
+          </span>
+        </div>
+        <button
+          onClick={() =>
+            notify("Eligibility rechecked · you can start eligible tasks")
+          }
+          className="mt-3 rounded-full bg-white px-4 py-2 text-xs font-extrabold text-emerald-700 shadow-sm"
+        >
+          Recheck eligibility
+        </button>
+      </section>
+      <div className="no-scrollbar flex gap-2 overflow-x-auto">
+        {(["All", "Pending", "Approved", "Credited", "Rejected"] as const).map(
+          (item) => (
+            <button
+              key={item}
+              onClick={() => setFilter(item)}
+              className={`whitespace-nowrap rounded-full px-4 py-2 text-xs font-bold ${filter === item ? "bg-[#241b38] text-white" : "border border-[#ece9f2] bg-white text-slate-600"}`}
+            >
+              {item}
+            </button>
+          ),
+        )}
+      </div>
       <div className="grid gap-5 md:grid-cols-[.9fr_1.1fr]">
         <section className="overflow-hidden rounded-2xl border border-[#ece9f2] bg-white">
           {visible.map((item) => {
