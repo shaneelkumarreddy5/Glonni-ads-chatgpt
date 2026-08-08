@@ -280,7 +280,7 @@ function SummaryRow({label,value,last=false}:{label:string;value:string;last?:bo
 function DetailScreen({detail,open,notify}:{detail:Exclude<DetailKey,null>;open:(detail:DetailKey)=>void;notify:(message:string)=>void}) {
   if(detail==="notifications") return <DetailShell icon={Bell} title="You’re all caught up" body="Updates about rewards, tasks and withdrawals will appear here."><Notice icon={Gift} title="Welcome to Glonni Ads" body="Explore the new rewards experience." time="Today"/><Notice icon={ClipboardCheck} title="12 ads watched" body="8 more ads are available in today’s demo progress." time="Today"/><Notice icon={ShieldCheck} title="Protect your account" body="Complete KYC before your first withdrawal." time="Yesterday"/></DetailShell>;
   if(detail==="referral") return <ReferralExperience notify={notify}/>;
-  if(detail==="bonus") return <DetailShell icon={Gift} title="Daily check-in" body="Open Glonni Ads every day and complete an eligible task to build your streak."><div className="grid grid-cols-7 gap-2">{[1,2,3,4,5,6,7].map(day=><div key={day} className={`rounded-xl p-2 text-center ${day===1?"bg-orange-500 text-white":"border border-orange-100 bg-orange-50 text-orange-500"}`}><Flame className="mx-auto h-5 w-5"/><b className="mt-1 block text-xs">Day {day}</b></div>)}</div><PrimaryButton onClick={()=>notify("Today’s demo check-in is complete")}>Check in today</PrimaryButton><p className="text-center text-xs text-slate-500">Bonus values will be configured in the admin panel later.</p></DetailShell>;
+  if(detail==="bonus") return <DailyBonusExperience notify={notify}/>;
   if(detail==="wallet") return <WalletExperience open={open} notify={notify}/>;
   if(detail==="history") return <HistoryExperience/>;
   if(detail==="personal") return <PersonalInformation notify={notify}/>;
@@ -293,6 +293,53 @@ function DetailScreen({detail,open,notify}:{detail:Exclude<DetailKey,null>;open:
   if(detail==="logout") return <LogoutPreview notify={notify}/>;
   return <StoreDirectory notify={notify}/>;
 }
+
+function DailyBonusExperience({notify}:{notify:(message:string)=>void}) {
+  const [claimed,setClaimed]=useState(false);
+  const [celebrating,setCelebrating]=useState(false);
+  const currentDay=4;
+  const rewards=[
+    {day:1,reward:"₹0.50",label:"Starter"},
+    {day:2,reward:"₹0.75",label:"Keep going"},
+    {day:3,reward:"₹1.00",label:"Momentum"},
+    {day:4,reward:"₹1.25",label:"Today"},
+    {day:5,reward:"₹1.50",label:"On fire"},
+    {day:6,reward:"₹2.00",label:"Almost there"},
+    {day:7,reward:"₹5.00",label:"Weekly prize"},
+  ];
+  const claim=()=>{
+    if(claimed){notify("Today’s demo bonus is already claimed");return;}
+    setClaimed(true);
+    setCelebrating(true);
+    notify("Day 4 bonus claimed in this demo");
+    window.setTimeout(()=>setCelebrating(false),2200);
+  };
+  return <DetailShell icon={Gift} title="Your daily reward is ready" body="Check in every day and complete one eligible activity to keep your streak growing.">
+    <section className={`relative overflow-hidden rounded-[26px] bg-gradient-to-br from-orange-500 via-amber-500 to-yellow-400 p-5 text-white shadow-[0_18px_40px_rgba(245,158,11,.22)]`}>
+      <div className="absolute -right-9 -top-12 h-40 w-40 rounded-full bg-white/15"/><div className="absolute -bottom-12 left-20 h-28 w-28 rounded-full bg-orange-300/20"/>
+      <div className="relative flex items-center justify-between gap-4"><div><span className="text-[10px] font-black tracking-[.18em] text-white/75">CURRENT STREAK</span><div className="mt-1 flex items-center gap-2"><Flame className="h-9 w-9 fill-white"/><b className="text-4xl font-black">{claimed?4:3} days</b></div><p className="mt-2 text-xs font-semibold text-white/80">Come back tomorrow to protect your streak.</p></div><span className="grid h-20 w-20 shrink-0 place-items-center rounded-[24px] bg-white/20 shadow-inner"><Trophy className="h-11 w-11 text-yellow-100"/></span></div>
+    </section>
+    <section className="rounded-[24px] border border-orange-100 bg-white p-4 sm:p-5">
+      <div className="flex items-center justify-between"><div><span className="text-[10px] font-black tracking-[.16em] text-orange-500">7-DAY CHECK-IN</span><h3 className="mt-1 text-lg font-black text-[#241d34]">Weekly reward calendar</h3></div><span className="rounded-full bg-orange-50 px-3 py-1.5 text-xs font-black text-orange-600">₹11.00 total</span></div>
+      <div className="mt-4 grid grid-cols-4 gap-2 sm:grid-cols-7">{rewards.map(item=>{
+        const completed=item.day<currentDay||(item.day===currentDay&&claimed);
+        const active=item.day===currentDay&&!claimed;
+        return <button key={item.day} disabled={!active} onClick={claim} aria-label={`Day ${item.day}: ${item.reward}`} className={`relative min-h-24 rounded-2xl border p-2 text-center transition ${completed?"border-emerald-200 bg-emerald-50 text-emerald-700":active?"border-orange-400 bg-orange-50 text-orange-600 ring-2 ring-orange-100 hover:-translate-y-0.5":"border-slate-100 bg-slate-50 text-slate-400"}`}>
+          {completed?<CheckCircle2 className="mx-auto h-5 w-5"/>:<Gift className={`mx-auto h-5 w-5 ${active?"animate-bounce":""}`}/>}<b className="mt-1 block text-[10px] uppercase">Day {item.day}</b><strong className="mt-1 block text-sm">{item.reward}</strong><span className="mt-1 block truncate text-[9px] font-bold">{completed?"Claimed":item.label}</span>{active&&<span className="absolute -right-1 -top-1 h-3 w-3 animate-pulse rounded-full bg-orange-500 ring-4 ring-orange-100"/>}
+        </button>})}</div>
+      <div className="mt-4 h-2.5 overflow-hidden rounded-full bg-orange-100"><div className="h-full rounded-full bg-gradient-to-r from-orange-500 to-amber-400 transition-all duration-500" style={{width:`${((claimed?4:3)/7)*100}%`}}/></div><div className="mt-2 flex justify-between text-[11px] font-bold"><span className="text-orange-600">{claimed?4:3} days completed</span><span className="text-slate-400">₹5 weekly prize on Day 7</span></div>
+    </section>
+    <section className={`rounded-2xl border p-5 text-center ${claimed?"border-emerald-100 bg-emerald-50":"border-orange-100 bg-gradient-to-br from-orange-50 to-amber-50"}`}>
+      <span className={`mx-auto grid h-16 w-16 place-items-center rounded-full ${claimed?"bg-emerald-500 text-white":"bg-orange-500 text-white shadow-lg shadow-orange-200"}`}>{claimed?<CheckCircle2 className="h-8 w-8"/>:<Gift className="h-8 w-8"/>}</span><h3 className="mt-3 text-lg font-black text-[#241d34]">{claimed?"Today’s bonus claimed":"Claim ₹1.25 today"}</h3><p className="mx-auto mt-1 max-w-sm text-xs leading-5 text-slate-500">{claimed?"Your demo streak is now 4 days. The reward will remain mock data until the wallet backend is connected.":"Your eligible task is marked complete in this frontend preview. Claim before midnight."}</p>{!claimed&&<button onClick={claim} className="mt-4 w-full rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 py-3.5 text-sm font-extrabold text-white shadow-md shadow-orange-100">Claim daily bonus</button>}
+    </section>
+    <div className="grid grid-cols-3 gap-3"><Metric label="This week" value={claimed?"₹3.50":"₹2.25"}/><Metric label="Best streak" value="6 days"/><Metric label="Next prize" value="₹1.50"/></div>
+    <section><SectionTitle title="Recent check-ins"/><div className="overflow-hidden rounded-2xl border border-[#ece9f2] bg-white"><BonusHistory day="Yesterday · Day 3" reward="+₹1.00"/><BonusHistory day="6 Aug · Day 2" reward="+₹0.75"/><BonusHistory day="5 Aug · Day 1" reward="+₹0.50" last/></div></section>
+    <InfoCard title="How the streak works" lines={["Open the app and complete one eligible activity each day","Claim your reward before 11:59 PM local time","Missing a day resets the streak to Day 1","Bonus amounts and eligibility will be controlled by the backend later"]}/>
+    {celebrating&&<div className="fixed inset-0 z-[70] grid place-items-center bg-[#1b1128]/55 p-5 backdrop-blur-sm" onClick={()=>setCelebrating(false)}><div className="w-full max-w-sm animate-bounce rounded-[30px] border border-white/60 bg-white p-7 text-center shadow-2xl" onClick={event=>event.stopPropagation()}><span className="mx-auto grid h-24 w-24 place-items-center rounded-full bg-gradient-to-br from-orange-400 to-amber-500 text-white shadow-xl shadow-orange-200"><Gift className="h-12 w-12"/></span><span className="mt-5 block text-xs font-black tracking-[.18em] text-orange-500">DAY 4 COMPLETE</span><h3 className="mt-2 text-3xl font-black text-[#241d34]">+₹1.25</h3><p className="mt-2 text-sm text-slate-500">Daily bonus claimed in this frontend demo.</p><button onClick={()=>setCelebrating(false)} className="mt-5 w-full rounded-xl bg-orange-500 py-3 text-sm font-extrabold text-white">Continue</button></div></div>}
+  </DetailShell>;
+}
+
+function BonusHistory({day,reward,last=false}:{day:string;reward:string;last?:boolean}) { return <div className={`flex items-center gap-3 p-4 ${last?"":"border-b border-[#f0edf5]"}`}><span className="grid h-10 w-10 place-items-center rounded-xl bg-orange-50 text-orange-500"><Flame className="h-5 w-5"/></span><span className="flex-1"><b className="block text-sm text-[#282133]">Daily check-in</b><span className="text-xs text-slate-500">{day}</span></span><b className="text-sm text-emerald-600">{reward}</b></div> }
 
 function ReferralExperience({notify}:{notify:(message:string)=>void}) {
   const [tab,setTab]=useState<"friends"|"earnings">("friends");
