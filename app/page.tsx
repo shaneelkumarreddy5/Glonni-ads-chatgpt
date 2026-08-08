@@ -5,10 +5,10 @@ import {
   Camera, Coins, CreditCard, Download, FileText, Flame, Gamepad2, Gift, History,
   ExternalLink, Home, Landmark, LockKeyhole, Megaphone, MonitorPlay, Play, Search, ShieldCheck,
   Languages, LogOut, MessageSquare, Settings2, ShoppingBag, Smartphone, Sparkles, Store, Target, Timer, TrendingUp, Trophy, Upload, X,
-  UserRoundPlus, Wallet, Zap,
+  UserRoundPlus, Wallet, Zap, WifiOff,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 type NavKey = "home" | "tasks" | "shop" | "games" | "profile";
 type TaskKey = "watch" | "surveys" | "downloads";
@@ -32,7 +32,21 @@ export default function App() {
   const [detail, setDetail] = useState<DetailKey>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [readNotifications, setReadNotifications] = useState<string[]>(["welcome", "ads"]);
+  const [isOnline, setIsOnline] = useState(true);
+  const toastTimer = useRef<number | null>(null);
   const unreadNotifications = 7 - readNotifications.length;
+
+  useEffect(() => {
+    const updateConnection = () => setIsOnline(navigator.onLine);
+    updateConnection();
+    window.addEventListener("online", updateConnection);
+    window.addEventListener("offline", updateConnection);
+    return () => {
+      window.removeEventListener("online", updateConnection);
+      window.removeEventListener("offline", updateConnection);
+      if (toastTimer.current) window.clearTimeout(toastTimer.current);
+    };
+  }, []);
 
   const navigate = (key: NavKey, tab?: TaskKey) => {
     setDetail(null);
@@ -42,13 +56,16 @@ export default function App() {
   };
 
   const notify = (message: string) => {
+    if (toastTimer.current) window.clearTimeout(toastTimer.current);
     setToast(message);
-    window.setTimeout(() => setToast(""), 2200);
+    toastTimer.current = window.setTimeout(() => setToast(""), 2600);
   };
 
   return (
-    <main className="mx-auto min-h-screen w-full max-w-[1180px] bg-[#fbfbfe] pb-28 md:my-5 md:min-h-[calc(100vh-2.5rem)] md:rounded-[32px] md:border md:border-white md:shadow-[0_28px_80px_rgba(50,35,95,.12)]">
+    <main id="main-content" className="mx-auto min-h-screen w-full max-w-[1180px] bg-[#fbfbfe] pb-28 md:my-5 md:min-h-[calc(100vh-2.5rem)] md:rounded-[32px] md:border md:border-white md:shadow-[0_28px_80px_rgba(50,35,95,.12)]">
+      <a href="#main-content" className="sr-only z-[100] rounded-lg bg-violet-700 px-4 py-2 font-bold text-white focus:not-sr-only focus:fixed focus:left-3 focus:top-3">Skip to main content</a>
       <Header activeNav={activeNav} detail={detail} unreadNotifications={unreadNotifications} onBack={() => setDetail(null)} onSearch={() => setSearchOpen(true)} onNotifications={() => setDetail("notifications")} />
+      {!isOnline && <div role="status" className="mx-4 mb-4 flex items-center gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-amber-900 md:mx-8 lg:mx-10"><WifiOff className="h-5 w-5 shrink-0"/><span className="text-xs leading-5"><b className="block text-sm">You’re offline</b>Saved screens remain available, but earning actions need an internet connection.</span></div>}
       <section className="px-4 pb-4 md:px-8 lg:px-10">
         {detail ? <DetailScreen detail={detail} open={setDetail} notify={notify} readNotifications={readNotifications} setReadNotifications={setReadNotifications} /> : <>
           {activeNav === "home" && <HomeScreen navigate={navigate} open={setDetail} watched={watched} />}
@@ -60,7 +77,7 @@ export default function App() {
       </section>
       <BottomNav active={activeNav} navigate={navigate} />
       {searchOpen && <GlobalSearch onClose={() => setSearchOpen(false)} navigate={navigate} open={setDetail} />}
-      {toast && <div className="fixed bottom-24 left-1/2 z-50 -translate-x-1/2 rounded-full bg-[#1d1534] px-5 py-3 text-sm font-bold text-white shadow-xl">{toast}</div>}
+      <div aria-live="polite" aria-atomic="true" className="pointer-events-none fixed inset-x-4 bottom-24 z-50 flex justify-center">{toast && <div role="status" className="animate-toast-in max-w-md rounded-full bg-[#1d1534] px-5 py-3 text-center text-sm font-bold text-white shadow-xl">{toast}</div>}</div>
     </main>
   );
 }
@@ -84,6 +101,12 @@ function Header({ activeNav, detail, unreadNotifications, onBack, onSearch, onNo
 
 function GlobalSearch({ onClose, navigate, open }: { onClose: () => void; navigate: (key: NavKey, tab?: TaskKey) => void; open: (detail: DetailKey) => void }) {
   const [query, setQuery] = useState("");
+  useEffect(() => {
+    const closeOnEscape = (event: KeyboardEvent) => { if (event.key === "Escape") onClose(); };
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", closeOnEscape);
+    return () => { document.body.style.overflow = ""; window.removeEventListener("keydown", closeOnEscape); };
+  }, [onClose]);
   const results = [
     { title: "Watch & Earn", group: "Tasks", keywords: "ads video reward", icon: MonitorPlay, action: () => navigate("tasks", "watch") },
     { title: "Surveys", group: "Tasks", keywords: "opinion questions", icon: ClipboardCheck, action: () => navigate("tasks", "surveys") },
