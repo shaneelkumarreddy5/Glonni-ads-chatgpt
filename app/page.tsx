@@ -61,6 +61,7 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import type { TouchEvent } from "react";
 
 type NavKey = "home" | "tasks" | "shop" | "games" | "profile";
 type TaskKey = "watch" | "surveys" | "downloads";
@@ -112,7 +113,10 @@ export default function App() {
     "ads",
   ]);
   const [isOnline, setIsOnline] = useState(true);
+  const [pullDistance, setPullDistance] = useState(0);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const toastTimer = useRef<number | null>(null);
+  const pullStart = useRef<number | null>(null);
   const unreadNotifications = 7 - readNotifications.length;
 
   useEffect(() => {
@@ -180,6 +184,36 @@ export default function App() {
     toastTimer.current = window.setTimeout(() => setToast(""), 2600);
   };
 
+  const startPull = (event: TouchEvent<HTMLElement>) => {
+    if (window.scrollY === 0 && !isRefreshing) {
+      pullStart.current = event.touches[0]?.clientY ?? null;
+    }
+  };
+
+  const movePull = (event: TouchEvent<HTMLElement>) => {
+    if (pullStart.current === null || window.scrollY > 0) return;
+    const distance = Math.max(
+      0,
+      Math.min(92, ((event.touches[0]?.clientY ?? pullStart.current) - pullStart.current) * 0.48),
+    );
+    setPullDistance(distance);
+  };
+
+  const endPull = () => {
+    pullStart.current = null;
+    if (pullDistance < 62) {
+      setPullDistance(0);
+      return;
+    }
+    setPullDistance(56);
+    setIsRefreshing(true);
+    window.setTimeout(() => {
+      setIsRefreshing(false);
+      setPullDistance(0);
+      notify("You’re up to date");
+    }, 850);
+  };
+
   if (!authReady) return <AuthLoading />;
   if (authStage !== "authenticated")
     return (
@@ -193,7 +227,7 @@ export default function App() {
   return (
     <main
       id="main-content"
-      className="mx-auto min-h-screen w-full max-w-[1180px] bg-[#fbfbfe] pb-28 md:my-5 md:min-h-[calc(100vh-2.5rem)] md:rounded-[32px] md:border md:border-white md:shadow-[0_28px_80px_rgba(50,35,95,.12)]"
+      className="app-surface mx-auto min-h-screen w-full max-w-[1180px] bg-[#fbfbfe] pb-28 md:my-5 md:min-h-[calc(100vh-2.5rem)] md:rounded-[32px] md:border md:border-white md:shadow-[0_28px_80px_rgba(50,35,95,.12)]"
     >
       <a
         href="#main-content"
@@ -222,7 +256,30 @@ export default function App() {
           </span>
         </div>
       )}
-      <section className="px-4 pb-4 md:px-8 lg:px-10">
+      <div
+        aria-live="polite"
+        className="pointer-events-none flex items-center justify-center overflow-hidden transition-[height] duration-200"
+        style={{ height: pullDistance }}
+      >
+        <span className="inline-flex items-center gap-2 rounded-full border border-violet-100 bg-white px-3 py-2 text-[11px] font-extrabold text-violet-700 shadow-sm">
+          <RotateCcw
+            className={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`}
+            style={{ transform: isRefreshing ? undefined : `rotate(${pullDistance * 3}deg)` }}
+          />
+          {isRefreshing
+            ? "Refreshing…"
+            : pullDistance >= 62
+              ? "Release to refresh"
+              : "Pull to refresh"}
+        </span>
+      </div>
+      <section
+        className="px-4 pb-4 md:px-8 lg:px-10"
+        onTouchStart={startPull}
+        onTouchMove={movePull}
+        onTouchEnd={endPull}
+        onTouchCancel={endPull}
+      >
         {detail ? (
           <DetailScreen
             detail={detail}
@@ -6074,7 +6131,7 @@ function PrimaryButton({
   return (
     <button
       onClick={onClick}
-      className={`w-full rounded-xl bg-gradient-to-r ${purple} py-3.5 text-sm font-extrabold text-white shadow-md`}
+      className={`interactive-card w-full rounded-xl bg-gradient-to-r ${purple} py-3.5 text-sm font-extrabold text-white shadow-md`}
     >
       {children}
     </button>
@@ -6082,7 +6139,7 @@ function PrimaryButton({
 }
 function InfoCard({ title, lines }: { title: string; lines: string[] }) {
   return (
-    <section className="rounded-2xl border border-[#ece9f2] bg-white p-5">
+    <section className="surface-card rounded-2xl border border-[#ece9f2] bg-white p-5">
       <b className="text-sm">{title}</b>
       <div className="mt-3 space-y-3">
         {lines.map((line) => (
@@ -6100,7 +6157,7 @@ function InfoCard({ title, lines }: { title: string; lines: string[] }) {
 }
 function Metric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-2xl border border-[#ece9f2] bg-white p-4">
+    <div className="surface-card rounded-2xl border border-[#ece9f2] bg-white p-4">
       <span className="text-xs text-slate-500">{label}</span>
       <b className="mt-1 block text-xl">{value}</b>
     </div>
@@ -6116,8 +6173,10 @@ function EmptyState({
   body: string;
 }) {
   return (
-    <div className="rounded-2xl border border-dashed border-violet-200 bg-white p-8 text-center">
-      <Icon className="mx-auto h-9 w-9 text-violet-400" />
+    <div className="empty-state rounded-2xl border border-dashed border-violet-200 bg-white p-8 text-center">
+      <span className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-violet-50 text-violet-500">
+        <Icon className="h-7 w-7" />
+      </span>
       <b className="mt-3 block text-sm">{title}</b>
       <p className="mx-auto mt-1 max-w-xs text-xs leading-5 text-slate-500">
         {body}
@@ -6183,7 +6242,7 @@ function MiniStat({
   icon: LucideIcon;
 }) {
   return (
-    <div className="rounded-2xl border border-[#eeebf4] bg-white p-4 shadow-[0_8px_25px_rgba(30,20,60,.04)]">
+    <div className="surface-card rounded-2xl border border-[#eeebf4] bg-white p-4 shadow-[0_8px_25px_rgba(30,20,60,.04)]">
       <div className="flex items-center justify-between">
         <span className="text-xs font-semibold text-slate-500">{label}</span>
         <Icon className="h-4 w-4 text-violet-500" />
@@ -6222,7 +6281,7 @@ function SectionTitle({
 function ProgressCard({ current, total }: { current: number; total: number }) {
   const pct = Math.min(100, (current / total) * 100);
   return (
-    <section className="rounded-2xl border border-[#ece9f2] bg-white p-4">
+    <section className="surface-card rounded-2xl border border-[#ece9f2] bg-white p-4">
       <div className="flex items-center justify-between">
         <div>
           <b className="text-sm text-[#292236]">Daily reward progress</b>
