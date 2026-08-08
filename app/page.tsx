@@ -5,7 +5,7 @@ import {
   Camera, Coins, CreditCard, Download, FileText, Flame, Gamepad2, Gift, History,
   ExternalLink, Home, Landmark, LockKeyhole, Megaphone, MonitorPlay, Play, Search, ShieldCheck,
   Languages, LogOut, MessageSquare, Settings2, ShoppingBag, Smartphone, Sparkles, Store, Target, Timer, TrendingUp, Trophy, Upload, X,
-  UserRoundPlus, Wallet, Zap, WifiOff,
+  UserRoundPlus, Wallet, Zap, WifiOff, KeyRound, User, ArrowRight, RotateCcw,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -13,6 +13,7 @@ import { useEffect, useRef, useState } from "react";
 type NavKey = "home" | "tasks" | "shop" | "games" | "profile";
 type TaskKey = "watch" | "surveys" | "downloads";
 type DetailKey = "notifications" | "referral" | "bonus" | "wallet" | "history" | "personal" | "payout" | "kyc" | "preferences" | "language" | "support" | "legal" | "logout" | "stores" | null;
+type AuthStage = "welcome" | "mobile" | "otp" | "onboarding" | "authenticated";
 
 const navItems: { key: NavKey; label: string; icon: LucideIcon }[] = [
   { key: "home", label: "Home", icon: Home },
@@ -25,6 +26,9 @@ const navItems: { key: NavKey; label: string; icon: LucideIcon }[] = [
 const purple = "from-[#7357f2] via-[#6844e4] to-[#542bc9]";
 
 export default function App() {
+  const [authStage, setAuthStage] = useState<AuthStage>("welcome");
+  const [authReady, setAuthReady] = useState(false);
+  const [userName, setUserName] = useState("Shaneel");
   const [activeNav, setActiveNav] = useState<NavKey>("home");
   const [taskTab, setTaskTab] = useState<TaskKey>("watch");
   const [watched, setWatched] = useState(12);
@@ -37,6 +41,11 @@ export default function App() {
   const unreadNotifications = 7 - readNotifications.length;
 
   useEffect(() => {
+    const hasDemoSession = window.localStorage.getItem("glonni-demo-session") === "active";
+    const savedName = window.localStorage.getItem("glonni-demo-name");
+    if (savedName) setUserName(savedName);
+    if (hasDemoSession) setAuthStage("authenticated");
+    setAuthReady(true);
     const updateConnection = () => setIsOnline(navigator.onLine);
     updateConnection();
     window.addEventListener("online", updateConnection);
@@ -47,6 +56,21 @@ export default function App() {
       if (toastTimer.current) window.clearTimeout(toastTimer.current);
     };
   }, []);
+
+  const completeAuthentication = (name: string) => {
+    const cleanName = name.trim() || "Glonni User";
+    window.localStorage.setItem("glonni-demo-session", "active");
+    window.localStorage.setItem("glonni-demo-name", cleanName);
+    setUserName(cleanName);
+    setAuthStage("authenticated");
+  };
+
+  const logout = () => {
+    window.localStorage.removeItem("glonni-demo-session");
+    setDetail(null);
+    setActiveNav("home");
+    setAuthStage("welcome");
+  };
 
   const navigate = (key: NavKey, tab?: TaskKey) => {
     setDetail(null);
@@ -61,13 +85,16 @@ export default function App() {
     toastTimer.current = window.setTimeout(() => setToast(""), 2600);
   };
 
+  if (!authReady) return <AuthLoading />;
+  if (authStage !== "authenticated") return <AuthFlow stage={authStage} setStage={setAuthStage} onComplete={completeAuthentication} />;
+
   return (
     <main id="main-content" className="mx-auto min-h-screen w-full max-w-[1180px] bg-[#fbfbfe] pb-28 md:my-5 md:min-h-[calc(100vh-2.5rem)] md:rounded-[32px] md:border md:border-white md:shadow-[0_28px_80px_rgba(50,35,95,.12)]">
       <a href="#main-content" className="sr-only z-[100] rounded-lg bg-violet-700 px-4 py-2 font-bold text-white focus:not-sr-only focus:fixed focus:left-3 focus:top-3">Skip to main content</a>
-      <Header activeNav={activeNav} detail={detail} unreadNotifications={unreadNotifications} onBack={() => setDetail(null)} onSearch={() => setSearchOpen(true)} onNotifications={() => setDetail("notifications")} />
+      <Header activeNav={activeNav} detail={detail} userName={userName} unreadNotifications={unreadNotifications} onBack={() => setDetail(null)} onSearch={() => setSearchOpen(true)} onNotifications={() => setDetail("notifications")} />
       {!isOnline && <div role="status" className="mx-4 mb-4 flex items-center gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-amber-900 md:mx-8 lg:mx-10"><WifiOff className="h-5 w-5 shrink-0"/><span className="text-xs leading-5"><b className="block text-sm">You’re offline</b>Saved screens remain available, but earning actions need an internet connection.</span></div>}
       <section className="px-4 pb-4 md:px-8 lg:px-10">
-        {detail ? <DetailScreen detail={detail} open={setDetail} notify={notify} readNotifications={readNotifications} setReadNotifications={setReadNotifications} /> : <>
+        {detail ? <DetailScreen detail={detail} open={setDetail} notify={notify} onLogout={logout} readNotifications={readNotifications} setReadNotifications={setReadNotifications} /> : <>
           {activeNav === "home" && <HomeScreen navigate={navigate} open={setDetail} watched={watched} />}
           {activeNav === "tasks" && <TasksScreen active={taskTab} setActive={setTaskTab} watched={watched} setWatched={setWatched} notify={notify} />}
           {activeNav === "shop" && <ShopScreen notify={notify} open={setDetail} />}
@@ -82,13 +109,40 @@ export default function App() {
   );
 }
 
-function Header({ activeNav, detail, unreadNotifications, onBack, onSearch, onNotifications }: { activeNav: NavKey; detail: DetailKey; unreadNotifications: number; onBack: () => void; onSearch: () => void; onNotifications: () => void }) {
+function AuthLoading() {
+  return <main className="grid min-h-screen place-items-center bg-[#f7f5fb]"><div role="status" className="text-center"><span className="mx-auto grid h-16 w-16 animate-pulse place-items-center rounded-[22px] bg-violet-600 text-2xl font-black text-white">G</span><p className="mt-4 text-sm font-bold text-slate-500">Opening Glonni Ads…</p></div></main>;
+}
+
+function AuthFlow({ stage, setStage, onComplete }: { stage: AuthStage; setStage: (stage: AuthStage) => void; onComplete: (name: string) => void }) {
+  const [mobile,setMobile]=useState(""); const [otp,setOtp]=useState(""); const [name,setName]=useState("");
+  const [age,setAge]=useState(false); const [terms,setTerms]=useState(false); const [error,setError]=useState("");
+  const [interests,setInterests]=useState(["Watch ads"]);
+  const title=stage==="welcome"?"Earn from everyday moments.":stage==="mobile"?"Welcome to Glonni.":stage==="otp"?"Verify your number.":"Make Glonni yours.";
+  const body=stage==="welcome"?"Watch, discover, shop and play—with clear reward tracking.":stage==="mobile"?"Enter your mobile number to sign in or create an account.":stage==="otp"?`We sent a code to +91 ${mobile}.`:"Choose what you enjoy and confirm your account details.";
+  const requestOtp=()=>{if(!/^[6-9]\d{9}$/.test(mobile))return setError("Enter a valid 10-digit Indian mobile number.");setError("");setStage("otp")};
+  const verifyOtp=()=>{if(otp!=="123456")return setError("Use demo OTP 123456 to continue.");setError("");setStage("onboarding")};
+  const finish=()=>{if(name.trim().length<2)return setError("Enter your name.");if(!age||!terms)return setError("Accept the age confirmation and terms to continue.");onComplete(name)};
+  const toggle=(interest:string)=>setInterests(current=>current.includes(interest)?current.filter(item=>item!==interest):[...current,interest]);
+  return <main className="min-h-screen bg-[radial-gradient(circle_at_20%_0%,rgba(124,58,237,.18),transparent_32rem),#f7f5fb] p-4 sm:grid sm:place-items-center sm:p-8"><section className="mx-auto w-full max-w-md overflow-hidden rounded-[32px] border border-white/80 bg-white shadow-[0_30px_90px_rgba(63,40,115,.16)]">
+    <div className={`relative overflow-hidden bg-gradient-to-br ${purple} p-7 text-white`}><div className="absolute -right-10 -top-14 h-40 w-40 rounded-full bg-white/10"/><span className="relative grid h-14 w-14 place-items-center rounded-[20px] bg-white text-2xl font-black text-violet-700">G</span><p className="relative mt-5 text-xs font-black tracking-[.18em] text-violet-200">GLONNI ADS</p><h1 className="relative mt-2 text-3xl font-black leading-tight">{title}</h1><p className="relative mt-2 text-sm leading-6 text-white/70">{body}</p></div>
+    <div className="space-y-5 p-6">
+      {stage==="welcome"&&<><div className="grid grid-cols-3 gap-2">{[[MonitorPlay,"Watch"],[ShoppingBag,"Shop"],[Gamepad2,"Play"]].map(([icon,label])=>{const Icon=icon as LucideIcon;return <div key={label as string} className="rounded-2xl bg-violet-50 p-3 text-center"><Icon className="mx-auto h-5 w-5 text-violet-600"/><b className="mt-2 block text-xs">{label as string}</b></div>})}</div><button onClick={()=>setStage("mobile")} className={`flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r ${purple} py-4 text-sm font-extrabold text-white`}>Get started <ArrowRight className="h-4 w-4"/></button><button onClick={()=>setStage("mobile")} className="w-full text-sm font-extrabold text-violet-700">I already have an account</button><p className="text-center text-[11px] leading-5 text-slate-400">Frontend preview. Real OTP and secure sessions will use Supabase during backend integration.</p></>}
+      {stage==="mobile"&&<><AuthBack onClick={()=>setStage("welcome")}/><label className="block"><span className="text-xs font-extrabold">Mobile number</span><span className="mt-2 flex items-center rounded-2xl border border-[#e7e2ef] bg-[#faf9fc] px-4 focus-within:border-violet-500"><span className="border-r pr-3 text-sm font-bold text-slate-600">+91</span><input autoFocus inputMode="numeric" maxLength={10} value={mobile} onChange={e=>{setMobile(e.target.value.replace(/\D/g,""));setError("")}} placeholder="98765 43210" className="min-w-0 flex-1 bg-transparent px-3 py-4 font-bold outline-none"/></span></label><p className="flex gap-2 rounded-2xl bg-emerald-50 p-3 text-xs leading-5 text-emerald-800"><ShieldCheck className="h-5 w-5 shrink-0"/>Your number is used for account access and reward security.</p><AuthError message={error}/><PrimaryButton onClick={requestOtp}>Send OTP</PrimaryButton></>}
+      {stage==="otp"&&<><AuthBack onClick={()=>setStage("mobile")}/><label className="block"><span className="text-xs font-extrabold">6-digit OTP</span><span className="mt-2 flex items-center rounded-2xl border border-[#e7e2ef] bg-[#faf9fc] px-4 focus-within:border-violet-500"><KeyRound className="h-5 w-5 text-violet-500"/><input autoFocus inputMode="numeric" maxLength={6} value={otp} onChange={e=>{setOtp(e.target.value.replace(/\D/g,""));setError("")}} placeholder="••••••" className="min-w-0 flex-1 bg-transparent px-3 py-4 text-center text-xl font-black tracking-[.3em] outline-none"/></span></label><div className="rounded-2xl bg-amber-50 p-3 text-center text-xs text-amber-800">Demo OTP: <b className="tracking-widest">123456</b></div><AuthError message={error}/><PrimaryButton onClick={verifyOtp}>Verify & continue</PrimaryButton><button onClick={()=>setOtp("")} className="flex w-full items-center justify-center gap-2 text-xs font-extrabold text-violet-700"><RotateCcw className="h-4 w-4"/>Resend code</button></>}
+      {stage==="onboarding"&&<><AuthBack onClick={()=>setStage("otp")}/><label className="block"><span className="text-xs font-extrabold">Your name</span><span className="mt-2 flex items-center rounded-2xl border border-[#e7e2ef] bg-[#faf9fc] px-4 focus-within:border-violet-500"><User className="h-5 w-5 text-violet-500"/><input autoFocus value={name} onChange={e=>{setName(e.target.value);setError("")}} placeholder="Enter your full name" className="min-w-0 flex-1 bg-transparent px-3 py-4 text-sm font-bold outline-none"/></span></label><div><p className="text-xs font-extrabold">What interests you?</p><div className="mt-2 flex flex-wrap gap-2">{["Watch ads","Surveys","Shopping","Games"].map(item=><button key={item} onClick={()=>toggle(item)} className={`rounded-full border px-3 py-2 text-xs font-bold ${interests.includes(item)?"border-violet-500 bg-violet-50 text-violet-700":"border-[#e7e2ef] text-slate-500"}`}>{interests.includes(item)?"✓ ":""}{item}</button>)}</div></div><div className="space-y-3 rounded-2xl bg-[#faf9fc] p-4"><Consent checked={age} onChange={setAge}>I confirm that I am 18 years or older.</Consent><Consent checked={terms} onChange={setTerms}>I agree to the Terms of Use, Privacy Policy and Reward Rules.</Consent></div><AuthError message={error}/><PrimaryButton onClick={finish}>Create my account</PrimaryButton><p className="text-center text-[11px] leading-5 text-slate-400">This creates a local demo session only. No personal information is sent to a server.</p></>}
+    </div></section></main>;
+}
+function AuthBack({onClick}:{onClick:()=>void}){return <button onClick={onClick} className="inline-flex items-center gap-2 text-xs font-extrabold text-violet-700"><ArrowLeft className="h-4 w-4"/>Back</button>}
+function AuthError({message}:{message:string}){return message?<p role="alert" className="rounded-xl bg-rose-50 px-3 py-2 text-xs font-bold text-rose-600">{message}</p>:null}
+function Consent({checked,onChange,children}:{checked:boolean;onChange:(checked:boolean)=>void;children:React.ReactNode}){return <label className="flex cursor-pointer gap-3 text-xs leading-5 text-slate-600"><input type="checkbox" checked={checked} onChange={e=>onChange(e.target.checked)} className="mt-0.5 h-4 w-4 accent-violet-600"/><span>{children}</span></label>}
+
+function Header({ activeNav, detail, userName, unreadNotifications, onBack, onSearch, onNotifications }: { activeNav: NavKey; detail: DetailKey; userName: string; unreadNotifications: number; onBack: () => void; onSearch: () => void; onNotifications: () => void }) {
   const title = navItems.find((item) => item.key === activeNav)?.label;
   const detailTitles: Partial<Record<Exclude<DetailKey, null>, string>> = { notifications:"Notifications", referral:"Refer & Earn", bonus:"Daily Bonus", wallet:"Wallet", history:"Earning History", personal:"Personal Information", payout:"UPI / Bank Details", kyc:"KYC Verification", preferences:"Preferences", language:"Language", support:"Help & Support", legal:"Legal & Policies", logout:"Log out", stores:"All Stores" };
   return (
     <header className="sticky top-0 z-30 flex items-center justify-between bg-[#fbfbfe]/90 px-4 py-5 backdrop-blur-xl md:rounded-t-[32px] md:px-8 lg:px-10">
       <div>
-        {detail ? <button onClick={onBack} className="flex items-center gap-2 text-left"><span className="grid h-9 w-9 place-items-center rounded-full border border-[#ebe8f3] bg-white"><ArrowLeft className="h-4 w-4"/></span><h1 className="text-xl font-extrabold tracking-tight text-[#181426]">{detailTitles[detail]}</h1></button> : activeNav === "home" ? <><p className="text-xs font-medium text-slate-500">Good morning,</p><h1 className="text-xl font-extrabold tracking-tight text-[#181426]">Shaneel <span aria-hidden>👋</span></h1></> : <h1 className="text-2xl font-extrabold tracking-tight text-[#181426]">{title}</h1>}
+        {detail ? <button onClick={onBack} className="flex items-center gap-2 text-left"><span className="grid h-9 w-9 place-items-center rounded-full border border-[#ebe8f3] bg-white"><ArrowLeft className="h-4 w-4"/></span><h1 className="text-xl font-extrabold tracking-tight text-[#181426]">{detailTitles[detail]}</h1></button> : activeNav === "home" ? <><p className="text-xs font-medium text-slate-500">Good morning,</p><h1 className="text-xl font-extrabold tracking-tight text-[#181426]">{userName.split(" ")[0]} <span aria-hidden>👋</span></h1></> : <h1 className="text-2xl font-extrabold tracking-tight text-[#181426]">{title}</h1>}
       </div>
       <div className="flex items-center gap-2">
         {activeNav !== "home" && <div className="flex items-center gap-1.5 rounded-full border border-[#ebe8f3] bg-white px-3 py-2 text-sm font-extrabold text-[#272034] shadow-sm"><Coins className="h-4 w-4 text-amber-400" fill="currentColor" /> 0</div>}
@@ -302,7 +356,7 @@ function HistoryExperience() {
 function PayoutChoice({active,icon:Icon,title,body,onClick}:{active:boolean;icon:LucideIcon;title:string;body:string;onClick:()=>void}) { return <button onClick={onClick} className={`flex w-full items-center gap-3 rounded-2xl border p-4 text-left ${active?"border-violet-500 bg-violet-50":"border-[#ece9f2] bg-white"}`}><span className={`grid h-11 w-11 place-items-center rounded-xl ${active?"bg-violet-600 text-white":"bg-slate-100 text-slate-500"}`}><Icon className="h-5 w-5"/></span><span className="flex-1"><b className="block text-sm">{title}</b><span className="text-xs text-slate-500">{body}</span></span><span className={`grid h-5 w-5 place-items-center rounded-full border ${active?"border-violet-600 bg-violet-600":"border-slate-300"}`}>{active&&<CheckCircle2 className="h-3.5 w-3.5 text-white"/>}</span></button> }
 function SummaryRow({label,value,last=false}:{label:string;value:string;last?:boolean}) { return <div className={`flex items-center justify-between py-3 text-sm ${last?"":"border-b border-[#ece9f2]"}`}><span className="text-slate-500">{label}</span><b className="text-right text-[#282133]">{value}</b></div> }
 
-function DetailScreen({detail,open,notify,readNotifications,setReadNotifications}:{detail:Exclude<DetailKey,null>;open:(detail:DetailKey)=>void;notify:(message:string)=>void;readNotifications:string[];setReadNotifications:React.Dispatch<React.SetStateAction<string[]>>}) {
+function DetailScreen({detail,open,notify,onLogout,readNotifications,setReadNotifications}:{detail:Exclude<DetailKey,null>;open:(detail:DetailKey)=>void;notify:(message:string)=>void;onLogout:()=>void;readNotifications:string[];setReadNotifications:React.Dispatch<React.SetStateAction<string[]>>}) {
   if(detail==="notifications") return <NotificationsExperience open={open} notify={notify} readNotifications={readNotifications} setReadNotifications={setReadNotifications}/>;
   if(detail==="referral") return <ReferralExperience notify={notify}/>;
   if(detail==="bonus") return <DailyBonusExperience notify={notify}/>;
@@ -315,7 +369,7 @@ function DetailScreen({detail,open,notify,readNotifications,setReadNotifications
   if(detail==="language") return <LanguageSettings notify={notify}/>;
   if(detail==="support") return <SupportExperience notify={notify}/>;
   if(detail==="legal") return <LegalPolicies/>;
-  if(detail==="logout") return <LogoutPreview notify={notify}/>;
+  if(detail==="logout") return <LogoutPreview onLogout={onLogout}/>;
   return <StoreDirectory notify={notify}/>;
 }
 
@@ -482,7 +536,7 @@ function SupportExperience({notify}:{notify:(message:string)=>void}) {
 
 function LegalPolicies() { const [open,setOpen]=useState("Terms of use"); const policies=[{title:"Terms of use",body:"Explains eligibility, genuine task completion, reward verification and prohibited misuse."},{title:"Privacy policy",body:"Explains what account, device, task and payout data may be collected and why."},{title:"Reward policy",body:"Covers pending periods, reversals, returns, duplicate activity and partner validation."},{title:"Account deletion",body:"Explains how a user can request account and associated personal-data deletion."}]; return <DetailShell icon={FileText} title="Legal & policies" body="Review the rules that govern your account, privacy and rewards."><div className="overflow-hidden rounded-2xl border border-[#ece9f2] bg-white">{policies.map(item=><button key={item.title} onClick={()=>setOpen(open===item.title?"":item.title)} className="w-full border-b border-[#f0edf5] p-4 text-left last:border-0"><span className="flex items-center justify-between"><b className="text-sm">{item.title}</b><ChevronRight className={`h-4 w-4 text-violet-500 transition ${open===item.title?"rotate-90":""}`}/></span>{open===item.title&&<p className="mt-3 text-xs leading-5 text-slate-500">{item.body} Full legally reviewed text will be added before launch.</p>}</button>)}</div><div className="rounded-2xl bg-violet-50 p-4 text-xs leading-5 text-violet-800"><b className="block">Pre-launch notice</b>These summaries are UI placeholders, not the final legal documents.</div></DetailShell> }
 
-function LogoutPreview({notify}:{notify:(message:string)=>void}) { const [confirmed,setConfirmed]=useState(false); return <DetailShell icon={LogOut} title={confirmed?"You’re still signed in":"Log out of Glonni Ads?"} body={confirmed?"Authentication is not connected yet, so the demo session remains available.":"You will need to sign in again to access your wallet, tasks and reward history."}><section className="rounded-2xl border border-[#ece9f2] bg-white p-6 text-center"><span className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-rose-50 text-rose-500"><LogOut className="h-8 w-8"/></span><b className="mt-4 block text-lg">{confirmed?"Demo logout complete":"Confirm logout"}</b><p className="mx-auto mt-2 max-w-sm text-xs leading-5 text-slate-500">{confirmed?"Real session logout will work after authentication is connected.":"Any unsaved form changes will be lost."}</p></section>{confirmed?<PrimaryButton onClick={()=>{setConfirmed(false);notify("Returned to demo session")}}>Return to demo profile</PrimaryButton>:<><button onClick={()=>{setConfirmed(true);notify("Logged out of frontend demo")}} className="w-full rounded-xl bg-rose-500 py-3.5 text-sm font-extrabold text-white">Yes, log me out</button><p className="text-center text-xs text-slate-400">Login and secure session handling will be built later.</p></>}</DetailShell> }
+function LogoutPreview({onLogout}:{onLogout:()=>void}) { return <DetailShell icon={LogOut} title="Log out of Glonni Ads?" body="You will need to verify your mobile number again to access your wallet, tasks and reward history."><section className="rounded-2xl border border-[#ece9f2] bg-white p-6 text-center"><span className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-rose-50 text-rose-500"><LogOut className="h-8 w-8"/></span><b className="mt-4 block text-lg">Confirm logout</b><p className="mx-auto mt-2 max-w-sm text-xs leading-5 text-slate-500">Your local demo session will be cleared. No reward data is stored on a server yet.</p></section><button onClick={onLogout} className="w-full rounded-xl bg-rose-500 py-3.5 text-sm font-extrabold text-white">Yes, log me out</button><p className="text-center text-xs text-slate-400">Production logout will revoke the Supabase session during backend integration.</p></DetailShell> }
 
 function StoreDirectory({ notify }: { notify: (message: string) => void }) {
   const [query, setQuery] = useState("");
