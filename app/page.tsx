@@ -55,6 +55,9 @@ import {
   Heart,
   SlidersHorizontal,
   PackageCheck,
+  Moon,
+  Sun,
+  Gauge,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -128,6 +131,8 @@ export default function App() {
       }
     }
     if (hasDemoSession) setAuthStage("authenticated");
+    const savedTheme = window.localStorage.getItem("glonni-theme") || "light";
+    document.documentElement.classList.toggle("dark", savedTheme === "dark");
     setAuthReady(true);
     const updateConnection = () => setIsOnline(navigator.onLine);
     updateConnection();
@@ -3282,8 +3287,8 @@ function ProfileScreen({
   const settings = [
     {
       icon: Settings2,
-      title: "Notification preferences",
-      body: "Rewards, tasks and promotions",
+      title: "Personalization & settings",
+      body: "Theme, alerts, interests and data use",
       key: "preferences",
     },
     { icon: Languages, title: "Language", body: "English", key: "language" },
@@ -5349,13 +5354,50 @@ function KycExperience({ notify }: { notify: (message: string) => void }) {
 }
 
 function Preferences({ notify }: { notify: (message: string) => void }) {
-  const [settings, setSettings] = useState({
+  const defaultSettings = {
     rewards: true,
     tasks: true,
     withdrawals: true,
     promotions: false,
     email: false,
-  });
+  };
+  const [settings, setSettings] = useState(defaultSettings);
+  const [theme, setTheme] = useState("light");
+  const [dataSaver, setDataSaver] = useState(false);
+  const [interests, setInterests] = useState<string[]>(["Watch ads"]);
+  const [quietHours, setQuietHours] = useState(true);
+  const interestOptions = ["Watch ads", "Surveys", "App offers", "Shopping", "Games"];
+
+  useEffect(() => {
+    const savedTheme = window.localStorage.getItem("glonni-theme") || "light";
+    setTheme(savedTheme);
+    setDataSaver(window.localStorage.getItem("glonni-data-saver") === "on");
+    setQuietHours(window.localStorage.getItem("glonni-quiet-hours") !== "off");
+    try {
+      const savedNotifications = window.localStorage.getItem("glonni-notifications");
+      if (savedNotifications) setSettings(JSON.parse(savedNotifications));
+      const savedInterests = window.localStorage.getItem("glonni-demo-interests");
+      if (savedInterests) setInterests(JSON.parse(savedInterests));
+    } catch {
+      setSettings(defaultSettings);
+    }
+  // Defaults are intentionally used only when this screen first opens.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const applyTheme = (nextTheme: string) => {
+    setTheme(nextTheme);
+    document.documentElement.classList.toggle("dark", nextTheme === "dark");
+    window.localStorage.setItem("glonni-theme", nextTheme);
+  };
+
+  const save = () => {
+    window.localStorage.setItem("glonni-notifications", JSON.stringify(settings));
+    window.localStorage.setItem("glonni-demo-interests", JSON.stringify(interests));
+    window.localStorage.setItem("glonni-data-saver", dataSaver ? "on" : "off");
+    window.localStorage.setItem("glonni-quiet-hours", quietHours ? "on" : "off");
+    notify("Personalization settings saved on this device");
+  };
   const rows = [
     {
       key: "rewards",
@@ -5386,9 +5428,33 @@ function Preferences({ notify }: { notify: (message: string) => void }) {
   return (
     <DetailShell
       icon={Settings2}
-      title="Notification preferences"
-      body="Choose which Glonni Ads updates you want to receive."
+      title="Personalization & settings"
+      body="Make Glonni Ads comfortable, relevant and lighter on your mobile data."
     >
+      <section>
+        <SectionTitle title="Appearance" />
+        <div className="grid grid-cols-2 gap-3">
+          {[{ key: "light", label: "Light", icon: Sun }, { key: "dark", label: "Dark", icon: Moon }].map((item) => {
+            const Icon = item.icon;
+            return <button key={item.key} onClick={() => applyTheme(item.key)} className={`flex items-center justify-center gap-2 rounded-2xl border p-4 text-sm font-extrabold ${theme === item.key ? "border-violet-500 bg-violet-50 text-violet-700" : "border-[#ece9f2] bg-white text-slate-500"}`}>
+              <Icon className="h-5 w-5" />{item.label}
+            </button>;
+          })}
+        </div>
+      </section>
+
+      <section>
+        <SectionTitle title="Your earning interests" />
+        <p className="mb-3 text-xs leading-5 text-slate-500">Used to order recommendations on Home. It never blocks other task types.</p>
+        <div className="flex flex-wrap gap-2">
+          {interestOptions.map((interest) => <button key={interest} onClick={() => setInterests((current) => current.includes(interest) ? current.filter((value) => value !== interest) : [...current, interest])} className={`rounded-full border px-3 py-2 text-xs font-extrabold ${interests.includes(interest) ? "border-violet-500 bg-violet-50 text-violet-700" : "border-[#e7e2ef] bg-white text-slate-500"}`}>
+            {interests.includes(interest) && "✓ "}{interest}
+          </button>)}
+        </div>
+      </section>
+
+      <section>
+        <SectionTitle title="Notifications" />
       <div className="overflow-hidden rounded-2xl border border-[#ece9f2] bg-white">
         {rows.map((row) => (
           <div
@@ -5419,17 +5485,38 @@ function Preferences({ notify }: { notify: (message: string) => void }) {
           </div>
         ))}
       </div>
-      <PrimaryButton
-        onClick={() => notify("Notification preferences saved in this demo")}
-      >
-        Save preferences
-      </PrimaryButton>
+        <ToggleRow title="Quiet hours" body="Pause promotional alerts from 10 PM to 8 AM" value={quietHours} onChange={() => setQuietHours((value) => !value)} />
+      </section>
+
+      <section>
+        <SectionTitle title="Mobile data" />
+        <div className="rounded-2xl border border-[#ece9f2] bg-white p-4">
+          <div className="flex items-center gap-3">
+            <span className="grid h-10 w-10 place-items-center rounded-xl bg-emerald-50 text-emerald-600"><Gauge className="h-5 w-5" /></span>
+            <span className="flex-1"><b className="block text-sm">Data-saving mode</b><span className="mt-1 block text-xs leading-5 text-slate-500">Reduce image quality and stop automatic media previews. Reward tracking is unchanged.</span></span>
+            <Switch value={dataSaver} onChange={() => setDataSaver((value) => !value)} label="Data-saving mode" />
+          </div>
+          {dataSaver && <p className="mt-3 rounded-xl bg-emerald-50 px-3 py-2 text-[11px] font-bold text-emerald-700">On · Best for slower mobile connections</p>}
+        </div>
+      </section>
+
+      <p className="rounded-2xl bg-amber-50 px-4 py-3 text-[11px] leading-5 text-amber-800">These frontend preferences are stored only on this device. Account-wide sync will begin after Supabase is connected.</p>
+      <PrimaryButton onClick={save}>Save all settings</PrimaryButton>
     </DetailShell>
   );
 }
 
+function Switch({ value, onChange, label }: { value: boolean; onChange: () => void; label: string }) {
+  return <button role="switch" aria-label={label} aria-checked={value} onClick={onChange} className={`relative h-7 w-12 shrink-0 rounded-full transition ${value ? "bg-violet-600" : "bg-slate-200"}`}><span className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow transition ${value ? "left-6" : "left-1"}`} /></button>;
+}
+
+function ToggleRow({ title, body, value, onChange }: { title: string; body: string; value: boolean; onChange: () => void }) {
+  return <div className="mt-3 flex items-center gap-4 rounded-2xl border border-[#ece9f2] bg-white p-4"><span className="flex-1"><b className="block text-sm">{title}</b><span className="mt-1 block text-xs text-slate-500">{body}</span></span><Switch value={value} onChange={onChange} label={title} /></div>;
+}
+
 function LanguageSettings({ notify }: { notify: (message: string) => void }) {
   const [language, setLanguage] = useState("English");
+  useEffect(() => setLanguage(window.localStorage.getItem("glonni-language") || "English"), []);
   return (
     <DetailShell
       icon={Languages}
@@ -5469,7 +5556,10 @@ function LanguageSettings({ notify }: { notify: (message: string) => void }) {
         reviewed.
       </p>
       <PrimaryButton
-        onClick={() => notify(`${language} selected as app language`)}
+        onClick={() => {
+          window.localStorage.setItem("glonni-language", language);
+          notify(`${language} saved as your app language`);
+        }}
       >
         Apply language
       </PrimaryButton>
