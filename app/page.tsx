@@ -30,6 +30,7 @@ export default function App() {
   const [watched, setWatched] = useState(12);
   const [toast, setToast] = useState("");
   const [detail, setDetail] = useState<DetailKey>(null);
+  const [searchOpen, setSearchOpen] = useState(false);
 
   const navigate = (key: NavKey, tab?: TaskKey) => {
     setDetail(null);
@@ -45,7 +46,7 @@ export default function App() {
 
   return (
     <main className="mx-auto min-h-screen w-full max-w-[1180px] bg-[#fbfbfe] pb-28 md:my-5 md:min-h-[calc(100vh-2.5rem)] md:rounded-[32px] md:border md:border-white md:shadow-[0_28px_80px_rgba(50,35,95,.12)]">
-      <Header activeNav={activeNav} detail={detail} onBack={() => setDetail(null)} onNotifications={() => setDetail("notifications")} />
+      <Header activeNav={activeNav} detail={detail} onBack={() => setDetail(null)} onSearch={() => setSearchOpen(true)} onNotifications={() => setDetail("notifications")} />
       <section className="px-4 pb-4 md:px-8 lg:px-10">
         {detail ? <DetailScreen detail={detail} open={setDetail} notify={notify} /> : <>
           {activeNav === "home" && <HomeScreen navigate={navigate} open={setDetail} />}
@@ -56,12 +57,13 @@ export default function App() {
         </>}
       </section>
       <BottomNav active={activeNav} navigate={navigate} />
+      {searchOpen && <GlobalSearch onClose={() => setSearchOpen(false)} navigate={navigate} open={setDetail} />}
       {toast && <div className="fixed bottom-24 left-1/2 z-50 -translate-x-1/2 rounded-full bg-[#1d1534] px-5 py-3 text-sm font-bold text-white shadow-xl">{toast}</div>}
     </main>
   );
 }
 
-function Header({ activeNav, detail, onBack, onNotifications }: { activeNav: NavKey; detail: DetailKey; onBack: () => void; onNotifications: () => void }) {
+function Header({ activeNav, detail, onBack, onSearch, onNotifications }: { activeNav: NavKey; detail: DetailKey; onBack: () => void; onSearch: () => void; onNotifications: () => void }) {
   const title = navItems.find((item) => item.key === activeNav)?.label;
   const detailTitles: Partial<Record<Exclude<DetailKey, null>, string>> = { notifications:"Notifications", referral:"Refer & Earn", bonus:"Daily Bonus", wallet:"Wallet", history:"Earning History", payout:"UPI / Bank Details", kyc:"KYC Verification", support:"Help & Support", stores:"All Stores" };
   return (
@@ -71,10 +73,39 @@ function Header({ activeNav, detail, onBack, onNotifications }: { activeNav: Nav
       </div>
       <div className="flex items-center gap-2">
         {activeNav !== "home" && <div className="flex items-center gap-1.5 rounded-full border border-[#ebe8f3] bg-white px-3 py-2 text-sm font-extrabold text-[#272034] shadow-sm"><Coins className="h-4 w-4 text-amber-400" fill="currentColor" /> 0</div>}
+        {!detail && <button onClick={onSearch} aria-label="Search Glonni Ads" className="grid h-10 w-10 place-items-center rounded-full border border-[#ebe8f3] bg-white text-[#332c43] shadow-sm transition hover:border-violet-300 hover:text-violet-600"><Search className="h-5 w-5" /></button>}
         {!detail && <button onClick={onNotifications} aria-label="Notifications" className="relative grid h-10 w-10 place-items-center rounded-full border border-[#ebe8f3] bg-white text-[#332c43] shadow-sm"><Bell className="h-5 w-5" /><span className="absolute right-0 top-0 grid h-4 min-w-4 place-items-center rounded-full bg-rose-500 px-1 text-[9px] font-bold text-white">3</span></button>}
       </div>
     </header>
   );
+}
+
+function GlobalSearch({ onClose, navigate, open }: { onClose: () => void; navigate: (key: NavKey, tab?: TaskKey) => void; open: (detail: DetailKey) => void }) {
+  const [query, setQuery] = useState("");
+  const results = [
+    { title: "Watch & Earn", group: "Tasks", keywords: "ads video reward", icon: MonitorPlay, action: () => navigate("tasks", "watch") },
+    { title: "Surveys", group: "Tasks", keywords: "opinion questions", icon: ClipboardCheck, action: () => navigate("tasks", "surveys") },
+    { title: "Download Apps", group: "Tasks", keywords: "install offers", icon: Download, action: () => navigate("tasks", "downloads") },
+    { title: "Shop & Earn", group: "Shopping", keywords: "products compare amazon flipkart myntra ajio", icon: ShoppingBag, action: () => navigate("shop") },
+    { title: "Partner Stores", group: "Shopping", keywords: "amazon flipkart myntra ajio croma", icon: Store, action: () => open("stores") },
+    { title: "Games & Missions", group: "Games", keywords: "play challenge rewards", icon: Gamepad2, action: () => navigate("games") },
+    { title: "Wallet", group: "Account", keywords: "balance withdraw money", icon: Wallet, action: () => open("wallet") },
+    { title: "Earning History", group: "Account", keywords: "transactions rewards activity", icon: History, action: () => open("history") },
+    { title: "UPI / Bank Details", group: "Account", keywords: "payout account withdrawal", icon: Landmark, action: () => open("payout") },
+    { title: "KYC Verification", group: "Account", keywords: "pan identity verify", icon: ShieldCheck, action: () => open("kyc") },
+    { title: "Help & Support", group: "Support", keywords: "faq ticket issue", icon: CircleHelp, action: () => open("support") },
+    { title: "Refer & Earn", group: "Rewards", keywords: "invite friends referral", icon: UserRoundPlus, action: () => open("referral") },
+    { title: "Daily Bonus", group: "Rewards", keywords: "check in streak gift", icon: Gift, action: () => open("bonus") },
+  ];
+  const normalized = query.trim().toLowerCase();
+  const visible = results.filter(item => `${item.title} ${item.group} ${item.keywords}`.toLowerCase().includes(normalized));
+  const select = (action: () => void) => { action(); onClose(); window.scrollTo({ top: 0, behavior: "smooth" }); };
+  return <div className="fixed inset-0 z-[60] bg-[#171022]/45 p-3 backdrop-blur-sm sm:p-6" onMouseDown={onClose}>
+    <section role="dialog" aria-modal="true" aria-label="Search Glonni Ads" onMouseDown={event => event.stopPropagation()} className="mx-auto mt-12 max-h-[80vh] w-full max-w-xl overflow-hidden rounded-[26px] border border-white/70 bg-[#fbfbfe] shadow-2xl sm:mt-20">
+      <div className="flex items-center gap-3 border-b border-[#ebe8f2] p-4"><Search className="h-5 w-5 shrink-0 text-violet-600" /><input autoFocus value={query} onChange={event => setQuery(event.target.value)} placeholder="Search tasks, products, games, wallet…" className="min-w-0 flex-1 bg-transparent text-sm font-medium text-[#241d34] outline-none placeholder:text-slate-400" />{query && <button onClick={() => setQuery("")} aria-label="Clear search" className="grid h-8 w-8 place-items-center rounded-full bg-slate-100 text-slate-500"><X className="h-4 w-4" /></button>}<button onClick={onClose} className="text-xs font-extrabold text-violet-600">Close</button></div>
+      <div className="max-h-[calc(80vh-72px)] overflow-y-auto p-3">{!query && <p className="px-2 pb-3 text-xs font-bold text-slate-400">POPULAR SEARCHES</p>}<div className="space-y-1">{visible.map(({ title, group, icon: Icon, action }) => <button key={title} onClick={() => select(action)} className="flex w-full items-center gap-3 rounded-2xl p-3 text-left transition hover:bg-violet-50"><span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-violet-100 text-violet-600"><Icon className="h-5 w-5" /></span><span className="min-w-0 flex-1"><b className="block text-sm text-[#282133]">{title}</b><span className="text-xs text-slate-500">{group}</span></span><ChevronRight className="h-4 w-4 text-slate-300" /></button>)}</div>{visible.length === 0 && <EmptyState icon={Search} title="No results found" body="Try a simpler word such as games, wallet, surveys or shopping." />}</div>
+    </section>
+  </div>;
 }
 
 function HomeScreen({ navigate, open }: { navigate: (key: NavKey, tab?: TaskKey) => void; open: (detail:DetailKey)=>void }) {
@@ -150,13 +181,14 @@ function ShopScreen({ notify, open }: { notify: (m:string)=>void; open:(detail:D
 function GamesScreen({ notify }: { notify:(m:string)=>void }) {
   const [filter,setFilter]=useState("All games");
   const [selected,setSelected]=useState<string|null>(null);
+  const [query,setQuery]=useState("");
   const games=[
     {name:"Puzzle Quest",category:"Puzzle",goal:"Complete level 10",reward:"₹50",icon:"🧩",tag:"Trending",time:"25–35 min",players:"12.4K",progress:4,total:10,steps:["Install and open the game","Reach level 5 to unlock tracking","Complete level 10 within 7 days"]},
     {name:"Cricket League",category:"Sports",goal:"Win 3 matches",reward:"₹35",icon:"🏏",tag:"New",time:"15–20 min",players:"8.1K",progress:0,total:3,steps:["Install through Glonni Ads","Finish the practice match","Win 3 multiplayer matches"]},
     {name:"Word Master",category:"Word",goal:"Find 500 words",reward:"₹25",icon:"🔤",tag:"Trending",time:"20–30 min",players:"6.8K",progress:180,total:500,steps:["Open the tracked game link","Complete the tutorial","Find a total of 500 words"]},
     {name:"Ludo Club",category:"Board",goal:"Win 5 games",reward:"₹40",icon:"🎲",tag:"Top paying",time:"30–45 min",players:"15.2K",progress:2,total:5,steps:["Install and create your player ID","Play only eligible classic matches","Win 5 matches within 10 days"]},
   ];
-  const visible=filter==="All games"?games:games.filter(g=>g.tag===filter);
+  const visible=games.filter(g=>(filter==="All games"||g.tag===filter)&&`${g.name} ${g.goal} ${g.tag}`.toLowerCase().includes(query.toLowerCase()));
   const game=games.find(g=>g.name===selected);
   if(game) { const pct=Math.min(100,game.progress/game.total*100); return <div className="mx-auto max-w-2xl space-y-5">
     <button onClick={()=>setSelected(null)} className="inline-flex items-center gap-2 text-sm font-bold text-violet-600"><ArrowLeft className="h-4 w-4"/>Back to games</button>
@@ -169,6 +201,7 @@ function GamesScreen({ notify }: { notify:(m:string)=>void }) {
   return <div className="space-y-5"><Hero icon={Gamepad2} eyebrow="PLAY & EARN" title="Play games. Complete missions." body="Discover fun challenges and unlock rewards as you progress." action="Explore games" onClick={()=>document.getElementById("game-list")?.scrollIntoView({behavior:"smooth"})} />
   <div className="grid grid-cols-3 gap-3"><Metric label="In progress" value="3"/><Metric label="Completed" value="0"/><Metric label="Earned" value="₹0"/></div>
   <section className="rounded-2xl border border-amber-100 bg-gradient-to-r from-amber-50 to-orange-50 p-4"><div className="flex items-center gap-3"><span className="grid h-11 w-11 place-items-center rounded-xl bg-amber-400 text-white"><Trophy className="h-6 w-6"/></span><span className="flex-1"><b className="block text-sm text-amber-900">Weekly game challenge</b><span className="text-xs text-amber-700">Complete 3 missions to unlock a bonus.</span></span><span className="text-sm font-black text-amber-700">0 / 3</span></div></section>
+  <div className="relative"><Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"/><input value={query} onChange={event=>setQuery(event.target.value)} aria-label="Search games" placeholder="Search games or missions" className="w-full rounded-2xl border border-[#ece9f2] bg-white py-3.5 pl-11 pr-11 text-sm outline-none focus:border-violet-400"/>{query&&<button onClick={()=>setQuery("")} aria-label="Clear game search" className="absolute right-3 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-full bg-slate-100 text-slate-500"><X className="h-4 w-4"/></button>}</div>
   <div className="no-scrollbar flex gap-2 overflow-x-auto">{["All games","Trending","Top paying","New"].map(t=><button onClick={()=>setFilter(t)} key={t} className={`whitespace-nowrap rounded-full px-4 py-2 text-xs font-bold ${filter===t?"bg-[#241b38] text-white":"border border-[#ece9f2] bg-white text-slate-600"}`}>{t}</button>)}</div>
   <div id="game-list" className="grid gap-3 md:grid-cols-2">{visible.map(g=><button onClick={()=>setSelected(g.name)} key={g.name} className="rounded-2xl border border-[#ece9f2] bg-white p-4 text-left transition hover:-translate-y-0.5 hover:shadow-md"><div className="flex items-start gap-3"><span className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-violet-100 to-pink-100 text-3xl">{g.icon}</span><span className="min-w-0 flex-1"><span className="inline-block rounded-full bg-violet-50 px-2 py-0.5 text-[9px] font-black uppercase text-violet-600">{g.tag}</span><b className="mt-1 block text-sm text-[#282133]">{g.name}</b><span className="text-xs text-slate-500">{g.goal}</span></span><ChevronRight className="h-5 w-5 text-slate-300"/></div><div className="mt-4 flex items-center justify-between border-t border-[#f0edf5] pt-3"><span className="flex items-center gap-1 text-[11px] font-bold text-slate-500"><Timer className="h-3.5 w-3.5"/>{g.time}</span><span className="text-sm font-black text-violet-600">Earn {g.reward}</span></div></button>)}</div>
   {visible.length===0&&<EmptyState icon={Gamepad2} title="No games in this category" body="Try another filter to see available game missions."/>}</div>;
@@ -190,8 +223,14 @@ function DetailScreen({detail,open,notify}:{detail:Exclude<DetailKey,null>;open:
   if(detail==="payout") return <DetailShell icon={Landmark} title="Add payout details" body="Choose UPI or a bank account for future withdrawals."><Field label="UPI ID" placeholder="name@bank" icon={Smartphone}/><div className="flex items-center gap-3"><span className="h-px flex-1 bg-slate-200"/><span className="text-[10px] font-bold text-slate-400">OR BANK ACCOUNT</span><span className="h-px flex-1 bg-slate-200"/></div><Field label="Account holder name" placeholder="Full name" icon={CircleUserRound}/><Field label="Account number" placeholder="Bank account number" icon={CreditCard}/><Field label="IFSC code" placeholder="e.g. SBIN0001234" icon={Landmark}/><PrimaryButton onClick={()=>notify("Details will save after secure backend connection")}>Save payout details</PrimaryButton></DetailShell>;
   if(detail==="kyc") return <DetailShell icon={ShieldCheck} title="Verify your identity" body="KYC protects your account and is required before withdrawing rewards."><Step done title="Mobile verification" body="Verified for this UI demo"/><Step title="PAN verification" body="Add and verify your PAN details"/><Step title="Identity document" body="Upload an approved document"/><Step title="Selfie check" body="Complete a secure face match"/><PrimaryButton onClick={()=>notify("Secure KYC provider will be connected later")}>Start KYC</PrimaryButton></DetailShell>;
   if(detail==="support") return <DetailShell icon={CircleHelp} title="How can we help?" body="Browse common topics or contact the support team."><div className="grid grid-cols-2 gap-3">{["Earning rewards","Task tracking","Withdrawals","Account & KYC"].map(topic=><button key={topic} onClick={()=>notify(`${topic} guide coming soon`)} className="rounded-2xl border border-[#ece9f2] bg-white p-4 text-left text-sm font-bold text-[#282133]">{topic}<ChevronRight className="mt-3 h-4 w-4 text-violet-500"/></button>)}</div><button onClick={()=>notify("Support tickets will be enabled with the backend")} className="flex w-full items-center gap-3 rounded-2xl border border-[#ece9f2] bg-white p-4 text-left"><span className="grid h-10 w-10 place-items-center rounded-xl bg-violet-100 text-violet-600"><Mail className="h-5 w-5"/></span><span><b className="block text-sm">Create support ticket</b><span className="text-xs text-slate-500">We’ll show replies inside the app</span></span></button></DetailShell>;
+  return <StoreDirectory notify={notify}/>;
+}
+
+function StoreDirectory({ notify }: { notify: (message: string) => void }) {
+  const [query, setQuery] = useState("");
   const stores=["Amazon","Flipkart","Myntra","AJIO","Croma","Tata CLiQ","Nykaa","Reliance Digital"];
-  return <DetailShell icon={Store} title="Compare partner stores" body="Affiliate rates and product comparison will update after provider integration."><div className="relative"><Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"/><input placeholder="Search stores" className="w-full rounded-2xl border border-[#ece9f2] bg-white py-3.5 pl-11 pr-4 text-sm outline-none"/></div><div className="grid grid-cols-2 gap-3">{stores.map(store=><button key={store} onClick={()=>notify(`${store} integration coming soon`)} className="rounded-2xl border border-[#ece9f2] bg-white p-4 text-left"><span className="grid h-10 w-10 place-items-center rounded-xl bg-violet-50 font-black text-violet-600">{store[0]}</span><b className="mt-3 block text-sm">{store}</b><span className="text-xs text-emerald-600">Rates coming soon</span></button>)}</div></DetailShell>;
+  const visible=stores.filter(store=>store.toLowerCase().includes(query.toLowerCase()));
+  return <DetailShell icon={Store} title="Compare partner stores" body="Affiliate rates and product comparison will update after provider integration."><div className="relative"><Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"/><input value={query} onChange={event=>setQuery(event.target.value)} placeholder="Search stores" aria-label="Search partner stores" className="w-full rounded-2xl border border-[#ece9f2] bg-white py-3.5 pl-11 pr-11 text-sm outline-none focus:border-violet-400"/>{query&&<button onClick={()=>setQuery("")} aria-label="Clear store search" className="absolute right-3 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-full bg-slate-100 text-slate-500"><X className="h-4 w-4"/></button>}</div><div className="grid grid-cols-2 gap-3">{visible.map(store=><button key={store} onClick={()=>notify(`${store} integration coming soon`)} className="rounded-2xl border border-[#ece9f2] bg-white p-4 text-left"><span className="grid h-10 w-10 place-items-center rounded-xl bg-violet-50 font-black text-violet-600">{store[0]}</span><b className="mt-3 block text-sm">{store}</b><span className="text-xs text-emerald-600">Rates coming soon</span></button>)}</div>{visible.length===0&&<EmptyState icon={Store} title="Store not found" body="Try another store name or clear your search."/>}</DetailShell>;
 }
 
 function DetailShell({icon:Icon,title,body,children}:{icon:LucideIcon;title:string;body:string;children:React.ReactNode}) { return <div className="mx-auto max-w-2xl space-y-5"><section className="rounded-[26px] border border-violet-100 bg-gradient-to-br from-violet-50 to-white p-5"><span className="grid h-12 w-12 place-items-center rounded-2xl bg-violet-600 text-white"><Icon className="h-6 w-6"/></span><h2 className="mt-4 text-2xl font-black text-[#241d34]">{title}</h2><p className="mt-2 text-sm leading-6 text-slate-500">{body}</p></section>{children}</div> }
