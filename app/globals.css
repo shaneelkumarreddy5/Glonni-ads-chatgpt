@@ -15,3 +15,15 @@ button:disabled { cursor: not-allowed; }
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { scrollbar-width: none; }
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; } }
+
+/* Preview-wide dark theme. Utility overrides keep the existing single-page UI
+   readable until colors move into shared design tokens. */
+.dark { color-scheme: dark; background: #0f0c18; }
+.dark body { background: radial-gradient(circle at 10% 0%, rgba(115,87,242,.2), transparent 28rem), #0f0c18; color: #f5f3ff; }
+.dark main, .dark header { background-color: rgba(23, 18, 36, .96) !important; }
+.dark .bg-white { background-color: #211a31 !important; }
+.dark .bg-\[\#fbfbfe\] { background-color: #171224 !important; }
+.dark .bg-\[\#fbfbfe\]\/90 { background-color: rgba(23, 18, 36, .9) !important; }
+.dark .text-\[\#181426\], .dark .text-\[\#282133\], .dark .text-\[\#272034\], .dark .text-\[\#332c43\] { color: #f5f3ff !important; }
+.dark .text-slate-500, .dark .text-slate-400, .dark .text-slate-600 { color: #b8b0ca !important; }
+.dark .border-\[\#ece9f2\], .dark .border-\[\#ebe8f3\], .dark .border-\[\#e7e2ef\], .dark .border-\[\#f0edf5\] { border-color: #3d3351 !important; }
