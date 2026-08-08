@@ -2829,6 +2829,13 @@ function GamesScreen({ notify }: { notify: (m: string) => void }) {
   const [filter, setFilter] = useState("All games");
   const [selected, setSelected] = useState<string | null>(null);
   const [query, setQuery] = useState("");
+  const [trackedGames, setTrackedGames] = useState<string[]>([
+    "Puzzle Quest",
+    "Word Master",
+    "Ludo Club",
+  ]);
+  const [reportOpen, setReportOpen] = useState(false);
+  const [reportReason, setReportReason] = useState("");
   const games = [
     {
       name: "Puzzle Quest",
@@ -2841,6 +2848,13 @@ function GamesScreen({ notify }: { notify: (m: string) => void }) {
       players: "12.4K",
       progress: 4,
       total: 10,
+      expires: "5 days 8 hours",
+      trackingId: "GM-PQ-48291",
+      milestones: [
+        ["Installed & opened", "Verified", "₹0"],
+        ["Reach level 5", "In progress", "₹15"],
+        ["Complete level 10", "Locked", "₹35"],
+      ],
       steps: [
         "Install and open the game",
         "Reach level 5 to unlock tracking",
@@ -2858,6 +2872,13 @@ function GamesScreen({ notify }: { notify: (m: string) => void }) {
       players: "8.1K",
       progress: 0,
       total: 3,
+      expires: "7 days",
+      trackingId: "Not started",
+      milestones: [
+        ["Install & finish practice", "Ready", "₹5"],
+        ["Win first match", "Locked", "₹10"],
+        ["Win 3 matches", "Locked", "₹20"],
+      ],
       steps: [
         "Install through Glonni Ads",
         "Finish the practice match",
@@ -2875,6 +2896,13 @@ function GamesScreen({ notify }: { notify: (m: string) => void }) {
       players: "6.8K",
       progress: 180,
       total: 500,
+      expires: "3 days 14 hours",
+      trackingId: "GM-WM-73104",
+      milestones: [
+        ["Tutorial completed", "Verified", "₹5"],
+        ["Find 250 words", "In progress", "₹8"],
+        ["Find 500 words", "Locked", "₹12"],
+      ],
       steps: [
         "Open the tracked game link",
         "Complete the tutorial",
@@ -2892,6 +2920,13 @@ function GamesScreen({ notify }: { notify: (m: string) => void }) {
       players: "15.2K",
       progress: 2,
       total: 5,
+      expires: "8 days 2 hours",
+      trackingId: "GM-LC-62018",
+      milestones: [
+        ["Player ID created", "Verified", "₹5"],
+        ["Win 3 games", "In progress", "₹15"],
+        ["Win 5 games", "Locked", "₹20"],
+      ],
       steps: [
         "Install and create your player ID",
         "Play only eligible classic matches",
@@ -2909,6 +2944,7 @@ function GamesScreen({ notify }: { notify: (m: string) => void }) {
   const game = games.find((g) => g.name === selected);
   if (game) {
     const pct = Math.min(100, (game.progress / game.total) * 100);
+    const isTracked = trackedGames.includes(game.name);
     return (
       <div className="mx-auto max-w-2xl space-y-5">
         <button
@@ -2949,6 +2985,14 @@ function GamesScreen({ notify }: { notify: (m: string) => void }) {
           </div>
         </section>
         <section className="rounded-2xl border border-[#ece9f2] bg-white p-5">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-2 border-b border-[#f0edf5] pb-4">
+            <span className="inline-flex items-center gap-2 text-xs font-bold text-emerald-700">
+              <ShieldCheck className="h-4 w-4" /> New-install eligibility checked
+            </span>
+            <span className="inline-flex items-center gap-1 text-xs font-bold text-amber-700">
+              <CalendarClock className="h-4 w-4" /> Expires in {game.expires}
+            </span>
+          </div>
           <div className="flex items-center justify-between">
             <div>
               <b className="text-sm">Mission progress</b>
@@ -2965,6 +3009,29 @@ function GamesScreen({ notify }: { notify: (m: string) => void }) {
               className={`h-full rounded-full bg-gradient-to-r ${purple}`}
               style={{ width: `${pct}%` }}
             />
+          </div>
+          {isTracked && (
+            <div className="mt-4 rounded-xl bg-emerald-50 p-3 text-xs text-emerald-800">
+              <b className="block">Tracking active on this device</b>
+              Reference: {game.trackingId} · Last synced just now
+            </div>
+          )}
+        </section>
+        <section>
+          <SectionTitle title="Milestone rewards" side="Demo progress" />
+          <div className="space-y-3">
+            {game.milestones.map(([title, status, reward], index) => (
+              <div key={title} className="flex items-center gap-3 rounded-2xl border border-[#ece9f2] bg-white p-4">
+                <span className={`grid h-9 w-9 place-items-center rounded-full ${status === "Verified" ? "bg-emerald-100 text-emerald-700" : status === "In progress" || status === "Ready" ? "bg-violet-100 text-violet-700" : "bg-slate-100 text-slate-400"}`}>
+                  {status === "Verified" ? <CheckCircle2 className="h-5 w-5" /> : index + 1}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <b className="block text-sm">{title}</b>
+                  <span className="text-xs text-slate-500">{status} · partner verification may take up to 24 hours</span>
+                </span>
+                <b className="text-sm text-violet-700">{reward}</b>
+              </div>
+            ))}
           </div>
         </section>
         <section>
@@ -2999,12 +3066,42 @@ function GamesScreen({ notify }: { notify: (m: string) => void }) {
           ]}
         />
         <PrimaryButton
-          onClick={() =>
-            notify("Game partner tracking will be connected later")
-          }
+          onClick={() => {
+            if (!isTracked) {
+              setTrackedGames((current) => [...current, game.name]);
+              notify(`Tracking started · ${game.name}`);
+              return;
+            }
+            notify(`Opening ${game.name} with tracking active`);
+          }}
         >
-          Play game & start mission
+          {isTracked ? "Continue playing with tracking" : "Start tracked mission"}
         </PrimaryButton>
+        {isTracked && (
+          <button onClick={() => setReportOpen(true)} className="w-full rounded-2xl border border-violet-200 bg-white px-4 py-3 text-sm font-bold text-violet-700">
+            Report missing game reward
+          </button>
+        )}
+        <p className="rounded-2xl bg-amber-50 px-4 py-3 text-[11px] leading-5 text-amber-800"><b>Demo notice:</b> Game progress and rewards are sample data. Real verification will begin after a game partner is connected.</p>
+        {reportOpen && (
+          <div role="dialog" aria-modal="true" aria-label="Report missing game reward" className="fixed inset-0 z-50 grid place-items-end bg-slate-950/45 p-4 sm:place-items-center">
+            <div className="w-full max-w-md rounded-[28px] bg-white p-5 shadow-2xl">
+              <div className="flex items-start justify-between gap-3">
+                <div><h3 className="text-lg font-black">Missing game reward</h3><p className="mt-1 text-xs text-slate-500">Reference {game.trackingId}</p></div>
+                <button aria-label="Close report" onClick={() => setReportOpen(false)} className="grid h-9 w-9 place-items-center rounded-full bg-slate-100"><X className="h-4 w-4" /></button>
+              </div>
+              <label className="mt-5 block text-xs font-bold text-slate-600">What went wrong?</label>
+              <select value={reportReason} onChange={(event) => setReportReason(event.target.value)} className="mt-2 w-full rounded-2xl border border-[#e8e4ee] bg-white p-3 text-sm outline-none focus:border-violet-400">
+                <option value="">Select a reason</option>
+                <option>Milestone completed but not verified</option>
+                <option>Progress stopped updating</option>
+                <option>Reward approved but not credited</option>
+              </select>
+              <button disabled={!reportReason} onClick={() => { setReportOpen(false); setReportReason(""); notify("Game reward report submitted · GR-20841"); }} className="mt-4 w-full rounded-2xl bg-violet-600 px-4 py-3 text-sm font-black text-white disabled:cursor-not-allowed disabled:opacity-40">Submit report</button>
+              <p className="mt-3 text-center text-[11px] text-slate-500">Please report only after the 24-hour verification window.</p>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -3027,6 +3124,18 @@ function GamesScreen({ notify }: { notify: (m: string) => void }) {
         <Metric label="Completed" value="0" />
         <Metric label="Earned" value="₹0" />
       </div>
+      <section>
+        <SectionTitle title="Continue playing" side="3 active" />
+        <div className="no-scrollbar flex gap-3 overflow-x-auto pb-1">
+          {games.filter((g) => trackedGames.includes(g.name)).map((g) => (
+            <button key={g.name} onClick={() => setSelected(g.name)} className="min-w-[220px] rounded-2xl border border-violet-100 bg-white p-4 text-left shadow-sm">
+              <div className="flex items-center gap-3"><span className="text-3xl">{g.icon}</span><span><b className="block text-sm">{g.name}</b><span className="text-[11px] text-slate-500">Expires in {g.expires}</span></span></div>
+              <div className="mt-3 h-2 overflow-hidden rounded-full bg-violet-100"><div className="h-full rounded-full bg-violet-600" style={{ width: `${Math.min(100, (g.progress / g.total) * 100)}%` }} /></div>
+              <span className="mt-2 block text-xs font-bold text-violet-700">Continue tracked mission</span>
+            </button>
+          ))}
+        </div>
+      </section>
       <section className="rounded-2xl border border-amber-100 bg-gradient-to-r from-amber-50 to-orange-50 p-4">
         <div className="flex items-center gap-3">
           <span className="grid h-11 w-11 place-items-center rounded-xl bg-amber-400 text-white">
