@@ -52,6 +52,9 @@ import {
   RotateCcw,
   AlertTriangle,
   CalendarClock,
+  Heart,
+  SlidersHorizontal,
+  PackageCheck,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -2401,6 +2404,12 @@ function ShopScreen({
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("All");
   const [selected, setSelected] = useState<string | null>(null);
+  const [sort, setSort] = useState("Recommended");
+  const [saved, setSaved] = useState<string[]>([]);
+  const [shopView, setShopView] = useState<"browse" | "tracking" | "claim">(
+    "browse",
+  );
+  const [claimText, setClaimText] = useState("");
   const stores = [
     {
       name: "Amazon",
@@ -2435,6 +2444,9 @@ function ShopScreen({
       subtitle: "8GB · 128GB",
       best: "₹24,999",
       earn: "₹500",
+      priceValue: 24999,
+      earnValue: 500,
+      popularity: 98,
       offers: [
         { store: "Flipkart", price: "₹24,999", earning: "₹500", best: true },
         { store: "Amazon", price: "₹25,499", earning: "₹255", best: false },
@@ -2448,6 +2460,9 @@ function ShopScreen({
       subtitle: "42-hour playback",
       best: "₹999",
       earn: "₹80",
+      priceValue: 999,
+      earnValue: 80,
+      popularity: 94,
       offers: [
         { store: "Amazon", price: "₹999", earning: "₹80", best: true },
         { store: "Flipkart", price: "₹1,049", earning: "₹63", best: false },
@@ -2460,6 +2475,9 @@ function ShopScreen({
       subtitle: "Men's lightweight shoes",
       best: "₹2,249",
       earn: "₹157",
+      priceValue: 2249,
+      earnValue: 157,
+      popularity: 89,
       offers: [
         { store: "Myntra", price: "₹2,249", earning: "₹157", best: true },
         { store: "AJIO", price: "₹2,399", earning: "₹120", best: false },
@@ -2472,6 +2490,9 @@ function ShopScreen({
       subtitle: "Ocean fish · 3 kg",
       best: "₹1,099",
       earn: "₹66",
+      priceValue: 1099,
+      earnValue: 66,
+      popularity: 82,
       offers: [
         { store: "Amazon", price: "₹1,099", earning: "₹66", best: true },
         { store: "Flipkart", price: "₹1,149", earning: "₹46", best: false },
@@ -2479,12 +2500,69 @@ function ShopScreen({
     },
   ];
   const categories = ["All", "Mobiles", "Electronics", "Fashion", "Pet Care"];
-  const visible = products.filter(
-    (p) =>
-      (category === "All" || p.category === category) &&
-      `${p.name} ${p.category}`.toLowerCase().includes(query.toLowerCase()),
-  );
+  const visible = products
+    .filter(
+      (p) =>
+        (category === "All" || p.category === category) &&
+        `${p.name} ${p.category}`.toLowerCase().includes(query.toLowerCase()),
+    )
+    .sort((a, b) => {
+      if (sort === "Lowest price") return a.priceValue - b.priceValue;
+      if (sort === "Highest cashback") return b.earnValue - a.earnValue;
+      if (sort === "Popular") return b.popularity - a.popularity;
+      return b.earnValue / b.priceValue - a.earnValue / a.priceValue;
+    });
   const product = products.find((p) => p.name === selected);
+  const toggleSaved = (name: string) =>
+    setSaved((current) =>
+      current.includes(name)
+        ? current.filter((item) => item !== name)
+        : [...current, name],
+    );
+  if (shopView === "tracking")
+    return (
+      <div className="mx-auto max-w-2xl space-y-5">
+        <button onClick={() => setShopView("browse")} className="inline-flex items-center gap-2 text-sm font-bold text-violet-600">
+          <ArrowLeft className="h-4 w-4" /> Back to Shop & Earn
+        </button>
+        <Hero icon={PackageCheck} eyebrow="PURCHASE TRACKING" title="Your cashback journey" body="Follow every step from store visit to confirmed earnings." action="View claim help" onClick={() => setShopView("claim")} />
+        <section className="rounded-[28px] border border-[#ece9f2] bg-white p-5">
+          <div className="flex items-start justify-between gap-3">
+            <div><p className="text-[10px] font-black uppercase tracking-wider text-violet-600">Demo order · GL-SH-48219</p><h2 className="mt-1 font-black text-[#241d34]">boAt Airdopes 141</h2><p className="mt-1 text-xs text-slate-500">Amazon · ₹999 · Estimated ₹80 cashback</p></div>
+            <span className="rounded-full bg-amber-50 px-3 py-1 text-[10px] font-black text-amber-700">TRACKING</span>
+          </div>
+          <div className="mt-6 space-y-0">
+            {[
+              [true, "Store visit tracked", "Today, 2:14 PM", "Your Glonni click was recorded."],
+              [true, "Purchase reported", "Today, 2:27 PM", "The partner has reported your order."],
+              [false, "Return period", "Expected by 22 Aug", "Cashback stays pending until returns close."],
+              [false, "Cashback confirmed", "Expected by 25 Aug", "₹80 will move to available balance."],
+            ].map(([done, title, time, body], index) => (
+              <div key={String(title)} className="flex gap-3">
+                <div className="flex flex-col items-center"><span className={`grid h-8 w-8 place-items-center rounded-full ${done ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-400"}`}>{done ? <CheckCircle2 className="h-4 w-4" /> : index + 1}</span>{index < 3 && <span className="h-12 w-px bg-slate-200" />}</div>
+                <div className="pb-5"><div className="flex flex-wrap items-center gap-2"><b className="text-sm text-[#292236]">{String(title)}</b><span className="text-[10px] font-bold text-slate-400">{String(time)}</span></div><p className="mt-1 text-xs text-slate-500">{String(body)}</p></div>
+              </div>
+            ))}
+          </div>
+          <button onClick={() => setShopView("claim")} className="w-full rounded-xl border border-violet-200 py-3 text-sm font-extrabold text-violet-700">Report missing cashback</button>
+        </section>
+        <InfoCard title="Tracking protection" lines={["Do not cancel or modify the order from another link", "Partner confirmation can take 24–72 hours", "Keep the invoice until cashback is confirmed"]} />
+      </div>
+    );
+  if (shopView === "claim")
+    return (
+      <div className="mx-auto max-w-2xl space-y-5">
+        <button onClick={() => setShopView("tracking")} className="inline-flex items-center gap-2 text-sm font-bold text-violet-600"><ArrowLeft className="h-4 w-4" /> Back to tracking</button>
+        <section className="rounded-[28px] border border-[#ece9f2] bg-white p-5">
+          <span className="grid h-12 w-12 place-items-center rounded-2xl bg-rose-50 text-rose-600"><CircleHelp className="h-6 w-6" /></span>
+          <h2 className="mt-4 text-xl font-black text-[#241d34]">Missing cashback claim</h2>
+          <p className="mt-2 text-sm leading-6 text-slate-500">We’ll attach tracking ID GL-SH-48219 automatically. Claims can be submitted 72 hours after purchase.</p>
+          <label className="mt-5 block text-xs font-extrabold text-slate-700">What went wrong?</label>
+          <textarea value={claimText} onChange={(e) => setClaimText(e.target.value)} placeholder="Add the order date, store order ID and what you expected…" className="mt-2 min-h-32 w-full rounded-2xl border border-[#e8e4ef] p-4 text-sm outline-none focus:border-violet-500" />
+          <button disabled={claimText.trim().length < 15} onClick={() => { notify("Missing cashback claim created: MC-2048"); setClaimText(""); setShopView("tracking"); }} className="mt-4 w-full rounded-xl bg-violet-600 py-3.5 text-sm font-extrabold text-white disabled:opacity-40">Submit claim</button>
+        </section>
+      </div>
+    );
   if (product)
     return (
       <div className="mx-auto max-w-2xl space-y-5">
@@ -2496,6 +2574,11 @@ function ShopScreen({
           Back to products
         </button>
         <section className="rounded-[28px] border border-[#ece9f2] bg-white p-5">
+          <div className="mb-3 flex justify-end">
+            <button onClick={() => toggleSaved(product.name)} aria-label={saved.includes(product.name) ? "Remove from saved" : "Save product"} className={`grid h-10 w-10 place-items-center rounded-full border ${saved.includes(product.name) ? "border-rose-200 bg-rose-50 text-rose-600" : "border-slate-200 text-slate-500"}`}>
+              <Heart className={`h-5 w-5 ${saved.includes(product.name) ? "fill-current" : ""}`} />
+            </button>
+          </div>
           <div className="flex gap-4">
             <span className="grid h-24 w-24 shrink-0 place-items-center rounded-3xl bg-gradient-to-br from-violet-50 to-pink-50 text-5xl">
               {product.icon}
@@ -2560,11 +2643,11 @@ function ShopScreen({
                       Earn {o.earning}
                     </b>
                     <button
-                      onClick={() =>
-                        notify(
-                          `${o.store} affiliate link will open after integration`,
-                        )
-                      }
+                      onClick={() => {
+                        notify(`${o.store} store visit tracked in this demo`);
+                        setShopView("tracking");
+                        setSelected(null);
+                      }}
                       className="mt-1 inline-flex items-center gap-1 text-xs font-bold text-violet-600"
                     >
                       Shop now
@@ -2582,6 +2665,7 @@ function ShopScreen({
             "Always open the store through Glonni Ads",
             "Complete the purchase in the same session",
             "Earnings are confirmed after the return period",
+            "Prices and cashback can change before checkout—verify on the store",
           ]}
         />
       </div>
@@ -2600,6 +2684,11 @@ function ShopScreen({
             ?.scrollIntoView({ behavior: "smooth" })
         }
       />
+      <div className="grid grid-cols-3 gap-2">
+        <button onClick={() => setShopView("tracking")} className="rounded-2xl border border-[#ece9f2] bg-white p-3 text-left"><PackageCheck className="h-5 w-5 text-violet-600" /><b className="mt-2 block text-xs">Track purchase</b><span className="text-[10px] text-slate-500">1 active</span></button>
+        <button onClick={() => { setCategory("All"); setQuery(""); notify(`${saved.length} saved product${saved.length === 1 ? "" : "s"}`); }} className="rounded-2xl border border-[#ece9f2] bg-white p-3 text-left"><Heart className="h-5 w-5 text-rose-500" /><b className="mt-2 block text-xs">Saved</b><span className="text-[10px] text-slate-500">{saved.length} products</span></button>
+        <button onClick={() => setSelected("boAt Airdopes 141")} className="rounded-2xl border border-[#ece9f2] bg-white p-3 text-left"><History className="h-5 w-5 text-amber-500" /><b className="mt-2 block text-xs">Viewed</b><span className="text-[10px] text-slate-500">See recent</span></button>
+      </div>
       <div className="relative">
         <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
         <input
@@ -2630,6 +2719,13 @@ function ShopScreen({
           </button>
         ))}
       </div>
+      <label className="flex items-center gap-3 rounded-2xl border border-[#ece9f2] bg-white px-4 py-3">
+        <SlidersHorizontal className="h-4 w-4 text-violet-600" />
+        <span className="text-xs font-extrabold text-slate-600">Sort by</span>
+        <select value={sort} onChange={(e) => setSort(e.target.value)} className="ml-auto bg-transparent text-xs font-extrabold text-[#241d34] outline-none" aria-label="Sort products">
+          {["Recommended", "Lowest price", "Highest cashback", "Popular"].map((option) => <option key={option}>{option}</option>)}
+        </select>
+      </label>
       <section>
         <SectionTitle
           title="Top stores"
@@ -2661,11 +2757,12 @@ function ShopScreen({
         {visible.length ? (
           <div className="grid gap-3 md:grid-cols-2">
             {visible.map((p) => (
-              <button
+              <article
                 key={p.name}
-                onClick={() => setSelected(p.name)}
-                className="rounded-2xl border border-[#ece9f2] bg-white p-4 text-left transition hover:-translate-y-0.5 hover:border-violet-200 hover:shadow-md"
+                className="relative rounded-2xl border border-[#ece9f2] bg-white p-4 text-left transition hover:-translate-y-0.5 hover:border-violet-200 hover:shadow-md"
               >
+                <button onClick={() => toggleSaved(p.name)} aria-label={saved.includes(p.name) ? `Remove ${p.name} from saved` : `Save ${p.name}`} className={`absolute right-3 top-3 z-10 grid h-9 w-9 place-items-center rounded-full bg-white shadow-sm ${saved.includes(p.name) ? "text-rose-600" : "text-slate-400"}`}><Heart className={`h-4 w-4 ${saved.includes(p.name) ? "fill-current" : ""}`} /></button>
+                <button onClick={() => setSelected(p.name)} className="w-full text-left">
                 <div className="flex gap-3">
                   <span className="grid h-16 w-16 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-violet-50 to-pink-50 text-3xl">
                     {p.icon}
@@ -2691,7 +2788,8 @@ function ShopScreen({
                     Earn {p.earn}
                   </span>
                 </div>
-              </button>
+                </button>
+              </article>
             ))}
           </div>
         ) : (
@@ -2702,6 +2800,7 @@ function ShopScreen({
           />
         )}
       </section>
+      <p className="rounded-2xl bg-amber-50 px-4 py-3 text-[11px] leading-5 text-amber-800"><b>Price & cashback disclaimer:</b> Estimates are based on demo partner data. The store’s checkout price and Glonni tracking confirmation determine the final reward.</p>
       <section className="rounded-2xl border border-[#ece9f2] bg-white p-5">
         <SectionTitle title="How it works" />
         {[
