@@ -14,6 +14,7 @@ type NavKey = "home" | "tasks" | "shop" | "games" | "profile";
 type TaskKey = "watch" | "surveys" | "downloads";
 type DetailKey = "notifications" | "referral" | "bonus" | "wallet" | "history" | "personal" | "payout" | "kyc" | "preferences" | "language" | "support" | "legal" | "logout" | "stores" | null;
 type AuthStage = "welcome" | "mobile" | "otp" | "onboarding" | "authenticated";
+type DemoProfile = { name: string; mobile: string; interests: string[] };
 
 const navItems: { key: NavKey; label: string; icon: LucideIcon }[] = [
   { key: "home", label: "Home", icon: Home },
@@ -29,6 +30,8 @@ export default function App() {
   const [authStage, setAuthStage] = useState<AuthStage>("welcome");
   const [authReady, setAuthReady] = useState(false);
   const [userName, setUserName] = useState("Shaneel");
+  const [userMobile, setUserMobile] = useState("");
+  const [userInterests, setUserInterests] = useState<string[]>(["Watch ads"]);
   const [activeNav, setActiveNav] = useState<NavKey>("home");
   const [taskTab, setTaskTab] = useState<TaskKey>("watch");
   const [watched, setWatched] = useState(12);
@@ -43,7 +46,13 @@ export default function App() {
   useEffect(() => {
     const hasDemoSession = window.localStorage.getItem("glonni-demo-session") === "active";
     const savedName = window.localStorage.getItem("glonni-demo-name");
+    const savedMobile = window.localStorage.getItem("glonni-demo-mobile");
+    const savedInterests = window.localStorage.getItem("glonni-demo-interests");
     if (savedName) setUserName(savedName);
+    if (savedMobile) setUserMobile(savedMobile);
+    if (savedInterests) {
+      try { setUserInterests(JSON.parse(savedInterests)); } catch { setUserInterests(["Watch ads"]); }
+    }
     if (hasDemoSession) setAuthStage("authenticated");
     setAuthReady(true);
     const updateConnection = () => setIsOnline(navigator.onLine);
@@ -57,11 +66,15 @@ export default function App() {
     };
   }, []);
 
-  const completeAuthentication = (name: string) => {
+  const completeAuthentication = ({ name, mobile, interests }: DemoProfile) => {
     const cleanName = name.trim() || "Glonni User";
     window.localStorage.setItem("glonni-demo-session", "active");
     window.localStorage.setItem("glonni-demo-name", cleanName);
+    window.localStorage.setItem("glonni-demo-mobile", mobile);
+    window.localStorage.setItem("glonni-demo-interests", JSON.stringify(interests));
     setUserName(cleanName);
+    setUserMobile(mobile);
+    setUserInterests(interests);
     setAuthStage("authenticated");
   };
 
@@ -95,11 +108,11 @@ export default function App() {
       {!isOnline && <div role="status" className="mx-4 mb-4 flex items-center gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-amber-900 md:mx-8 lg:mx-10"><WifiOff className="h-5 w-5 shrink-0"/><span className="text-xs leading-5"><b className="block text-sm">You’re offline</b>Saved screens remain available, but earning actions need an internet connection.</span></div>}
       <section className="px-4 pb-4 md:px-8 lg:px-10">
         {detail ? <DetailScreen detail={detail} open={setDetail} notify={notify} onLogout={logout} readNotifications={readNotifications} setReadNotifications={setReadNotifications} /> : <>
-          {activeNav === "home" && <HomeScreen navigate={navigate} open={setDetail} watched={watched} />}
+          {activeNav === "home" && <HomeScreen navigate={navigate} open={setDetail} watched={watched} userName={userName} userMobile={userMobile} interests={userInterests} />}
           {activeNav === "tasks" && <TasksScreen active={taskTab} setActive={setTaskTab} watched={watched} setWatched={setWatched} notify={notify} />}
           {activeNav === "shop" && <ShopScreen notify={notify} open={setDetail} />}
           {activeNav === "games" && <GamesScreen notify={notify} />}
-          {activeNav === "profile" && <ProfileScreen open={setDetail} />}
+          {activeNav === "profile" && <ProfileScreen open={setDetail} userName={userName} />}
         </>}
       </section>
       <BottomNav active={activeNav} navigate={navigate} />
@@ -113,7 +126,7 @@ function AuthLoading() {
   return <main className="grid min-h-screen place-items-center bg-[#f7f5fb]"><div role="status" className="text-center"><span className="mx-auto grid h-16 w-16 animate-pulse place-items-center rounded-[22px] bg-violet-600 text-2xl font-black text-white">G</span><p className="mt-4 text-sm font-bold text-slate-500">Opening Glonni Ads…</p></div></main>;
 }
 
-function AuthFlow({ stage, setStage, onComplete }: { stage: AuthStage; setStage: (stage: AuthStage) => void; onComplete: (name: string) => void }) {
+function AuthFlow({ stage, setStage, onComplete }: { stage: AuthStage; setStage: (stage: AuthStage) => void; onComplete: (profile: DemoProfile) => void }) {
   const [mobile,setMobile]=useState(""); const [otp,setOtp]=useState(""); const [name,setName]=useState("");
   const [age,setAge]=useState(false); const [terms,setTerms]=useState(false); const [error,setError]=useState("");
   const [interests,setInterests]=useState(["Watch ads"]);
@@ -121,7 +134,7 @@ function AuthFlow({ stage, setStage, onComplete }: { stage: AuthStage; setStage:
   const body=stage==="welcome"?"Watch, discover, shop and play—with clear reward tracking.":stage==="mobile"?"Enter your mobile number to sign in or create an account.":stage==="otp"?`We sent a code to +91 ${mobile}.`:"Choose what you enjoy and confirm your account details.";
   const requestOtp=()=>{if(!/^[6-9]\d{9}$/.test(mobile))return setError("Enter a valid 10-digit Indian mobile number.");setError("");setStage("otp")};
   const verifyOtp=()=>{if(otp!=="123456")return setError("Use demo OTP 123456 to continue.");setError("");setStage("onboarding")};
-  const finish=()=>{if(name.trim().length<2)return setError("Enter your name.");if(!age||!terms)return setError("Accept the age confirmation and terms to continue.");onComplete(name)};
+  const finish=()=>{if(name.trim().length<2)return setError("Enter your name.");if(!age||!terms)return setError("Accept the age confirmation and terms to continue.");onComplete({name,mobile,interests})};
   const toggle=(interest:string)=>setInterests(current=>current.includes(interest)?current.filter(item=>item!==interest):[...current,interest]);
   return <main className="min-h-screen bg-[radial-gradient(circle_at_20%_0%,rgba(124,58,237,.18),transparent_32rem),#f7f5fb] p-4 sm:grid sm:place-items-center sm:p-8"><section className="mx-auto w-full max-w-md overflow-hidden rounded-[32px] border border-white/80 bg-white shadow-[0_30px_90px_rgba(63,40,115,.16)]">
     <div className={`relative overflow-hidden bg-gradient-to-br ${purple} p-7 text-white`}><div className="absolute -right-10 -top-14 h-40 w-40 rounded-full bg-white/10"/><span className="relative grid h-14 w-14 place-items-center rounded-[20px] bg-white text-2xl font-black text-violet-700">G</span><p className="relative mt-5 text-xs font-black tracking-[.18em] text-violet-200">GLONNI ADS</p><h1 className="relative mt-2 text-3xl font-black leading-tight">{title}</h1><p className="relative mt-2 text-sm leading-6 text-white/70">{body}</p></div>
@@ -191,7 +204,7 @@ function GlobalSearch({ onClose, navigate, open }: { onClose: () => void; naviga
   </div>;
 }
 
-function HomeScreen({ navigate, open, watched }: { navigate: (key: NavKey, tab?: TaskKey) => void; open: (detail:DetailKey)=>void; watched:number }) {
+function HomeScreen({ navigate, open, watched, userName, userMobile, interests }: { navigate: (key: NavKey, tab?: TaskKey) => void; open: (detail:DetailKey)=>void; watched:number; userName:string; userMobile:string; interests:string[] }) {
   const shortcuts = [
     { label: "Tasks", icon: ClipboardCheck, color: "bg-violet-100 text-violet-600", action: () => navigate("tasks") },
     { label: "Shop & Earn", icon: ShoppingBag, color: "bg-pink-100 text-pink-600", action: () => navigate("shop") },
@@ -205,19 +218,33 @@ function HomeScreen({ navigate, open, watched }: { navigate: (key: NavKey, tab?:
     { title:"Shopping habits", meta:"Survey · Around 8 min", reward:"₹12", icon:ClipboardCheck, color:"bg-emerald-100 text-emerald-600", action:()=>navigate("tasks","surveys") },
     { title:"Pocket Budget", meta:"Install and register", reward:"₹45", icon:Download, color:"bg-blue-100 text-blue-600", action:()=>navigate("tasks","downloads") },
   ];
+  const preferredLabel = interests.length ? interests.slice(0,2).join(" · ") : "Explore all rewards";
+  const maskedMobile = userMobile ? `+91 ••••••${userMobile.slice(-4)}` : "Mobile verified";
   return <div className="space-y-6">
     <section className={`relative overflow-hidden rounded-[28px] bg-gradient-to-br ${purple} p-5 text-white shadow-[0_18px_40px_rgba(90,55,205,.22)] md:p-7`}>
       <div className="absolute -right-10 -top-16 h-44 w-44 rounded-full bg-white/10" /><div className="absolute -bottom-16 right-24 h-36 w-36 rounded-full bg-fuchsia-300/10" />
       <div className="relative flex items-center justify-between gap-3"><div><p className="text-sm font-semibold text-white/75">Available balance</p><p className="mt-1 text-4xl font-black tracking-tight">₹0.00</p><button onClick={()=>open("wallet")} className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-2 text-xs font-extrabold transition hover:bg-white/25">View wallet <ChevronRight className="h-4 w-4" /></button></div><div className="grid h-24 w-24 place-items-center rounded-[28px] bg-white/12 shadow-inner"><Wallet className="h-14 w-14 text-amber-300" strokeWidth={1.6} /></div></div>
     </section>
+    <section className="grid gap-3 md:grid-cols-[1.35fr_.65fr]">
+      <button onClick={()=>open("personal")} className="flex items-center gap-4 rounded-2xl border border-[#ece9f2] bg-white p-4 text-left shadow-[0_8px_25px_rgba(30,20,60,.04)]">
+        <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-violet-100 text-lg font-black text-violet-700">{userName.trim().charAt(0).toUpperCase()||"G"}</span>
+        <span className="min-w-0 flex-1"><span className="block truncate text-sm font-extrabold text-[#282133]">{userName}</span><span className="mt-1 block text-xs text-slate-500">{maskedMobile} · Demo profile</span><span className="mt-1 block truncate text-[10px] font-bold text-violet-600">Interested in {preferredLabel}</span></span>
+        <ChevronRight className="h-5 w-5 shrink-0 text-slate-300"/>
+      </button>
+      <button onClick={()=>open("kyc")} className="flex items-center gap-3 rounded-2xl border border-amber-100 bg-amber-50 p-4 text-left"><span className="grid h-11 w-11 place-items-center rounded-xl bg-white text-amber-600"><ShieldCheck className="h-5 w-5"/></span><span className="flex-1"><b className="block text-sm text-amber-900">Account setup 25%</b><span className="text-xs text-amber-700">Continue KYC preview</span></span><ChevronRight className="h-4 w-4 text-amber-500"/></button>
+    </section>
     <div className="grid grid-cols-2 gap-3"><MiniStat label="Today’s earning" value="₹0.00" hint="Start your first task" icon={Zap} /><MiniStat label="This month" value="₹0.00" hint="Your progress" icon={TrendingUp} /></div>
+    <section><SectionTitle title="Continue where you left off" side="2 in progress"/><div className="grid gap-3 sm:grid-cols-2">
+      <button onClick={()=>navigate("tasks","watch")} className="rounded-2xl border border-violet-100 bg-white p-4 text-left shadow-[0_8px_25px_rgba(30,20,60,.04)]"><div className="flex items-start gap-3"><span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-violet-100 text-violet-600"><MonitorPlay className="h-5 w-5"/></span><span className="flex-1"><span className="flex items-center justify-between gap-2"><b className="text-sm text-[#282133]">Daily ad goal</b><span className="text-xs font-black text-violet-600">{watched}/20</span></span><span className="mt-1 block text-xs text-slate-500">Continue with ad {Math.min(watched+1,20)}</span><span className="mt-3 block h-2 overflow-hidden rounded-full bg-violet-100"><span className={`block h-full rounded-full bg-gradient-to-r ${purple}`} style={{width:`${Math.min(100,watched/20*100)}%`}}/></span></span></div></button>
+      <button onClick={()=>navigate("tasks","downloads")} className="rounded-2xl border border-blue-100 bg-white p-4 text-left shadow-[0_8px_25px_rgba(30,20,60,.04)]"><div className="flex items-start gap-3"><span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-blue-100 text-blue-600"><Download className="h-5 w-5"/></span><span className="flex-1"><span className="flex items-center justify-between gap-2"><b className="text-sm text-[#282133]">Pocket Budget</b><span className="rounded-full bg-amber-50 px-2 py-1 text-[9px] font-black text-amber-700">1/3 STEPS</span></span><span className="mt-1 block text-xs text-slate-500">Complete registration · Earn ₹45</span><span className="mt-3 inline-flex items-center gap-1 text-xs font-extrabold text-blue-600">Resume offer <ChevronRight className="h-3.5 w-3.5"/></span></span></div></button>
+    </div><p className="mt-2 text-[10px] leading-4 text-slate-400">Progress shown here is sample dashboard data until provider tracking and Supabase are connected.</p></section>
     <section className="rounded-[24px] border border-violet-100 bg-white p-5 shadow-[0_10px_30px_rgba(45,28,85,.05)]">
       <div className="flex items-start justify-between gap-4"><div><span className="text-[10px] font-black tracking-[.16em] text-violet-500">TODAY’S GOAL</span><h2 className="mt-1 text-lg font-black text-[#241d34]">{watched} of 20 ads watched</h2><p className="mt-1 text-xs text-slate-500">{20-watched} ads left · Up to ₹{((20-watched)*0.8).toFixed(2)} still available</p></div><span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-amber-100 text-amber-500"><Target className="h-6 w-6" /></span></div>
       <div className="mt-4 h-2.5 overflow-hidden rounded-full bg-violet-100"><div className={`h-full rounded-full bg-gradient-to-r ${purple}`} style={{width:`${Math.min(100,watched/20*100)}%`}} /></div>
       <button onClick={()=>navigate("tasks","watch")} className={`mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r ${purple} py-3 text-sm font-extrabold text-white shadow-md`}><Play className="h-4 w-4" fill="currentColor" /> Continue watching</button>
     </section>
     <section><SectionTitle title="Quick access" /><div className="grid grid-cols-3 gap-3">{shortcuts.map(({label, icon: Icon, color, action}) => <button key={label} onClick={action} className="flex min-h-28 flex-col items-center justify-center gap-3 rounded-2xl border border-[#eeebf4] bg-white p-3 text-center shadow-[0_8px_25px_rgba(30,20,60,.04)] transition hover:-translate-y-0.5 hover:shadow-md"><span className={`grid h-11 w-11 place-items-center rounded-2xl ${color}`}><Icon className="h-6 w-6" /></span><span className="text-xs font-bold text-[#292336]">{label}</span></button>)}</div></section>
-    <section><SectionTitle title="Recommended for you" side="View tasks" onSide={()=>navigate("tasks")} /><div className="overflow-hidden rounded-2xl border border-[#ece9f2] bg-white">{opportunities.map(({title,meta,reward,icon:Icon,color,action})=><button key={title} onClick={action} className="flex w-full items-center gap-3 border-b border-[#f0edf5] p-4 text-left last:border-0 hover:bg-violet-50/40"><span className={`grid h-11 w-11 shrink-0 place-items-center rounded-xl ${color}`}><Icon className="h-5 w-5" /></span><span className="min-w-0 flex-1"><b className="block text-sm text-[#282133]">{title}</b><span className="text-xs text-slate-500">{meta}</span></span><span className="text-sm font-black text-violet-600">+{reward}</span><ChevronRight className="h-4 w-4 text-slate-300" /></button>)}</div></section>
+    <section><SectionTitle title="Recommended for you" side="View tasks" onSide={()=>navigate("tasks")} /><p className="-mt-2 mb-3 text-[11px] text-slate-400">Based on your interests: {preferredLabel}</p><div className="overflow-hidden rounded-2xl border border-[#ece9f2] bg-white">{opportunities.map(({title,meta,reward,icon:Icon,color,action})=><button key={title} onClick={action} className="flex w-full items-center gap-3 border-b border-[#f0edf5] p-4 text-left last:border-0 hover:bg-violet-50/40"><span className={`grid h-11 w-11 shrink-0 place-items-center rounded-xl ${color}`}><Icon className="h-5 w-5" /></span><span className="min-w-0 flex-1"><b className="block text-sm text-[#282133]">{title}</b><span className="text-xs text-slate-500">{meta}</span></span><span className="text-sm font-black text-violet-600">+{reward}</span><ChevronRight className="h-4 w-4 text-slate-300" /></button>)}</div></section>
     <section><SectionTitle title="Discover more" /><div className="grid gap-3 sm:grid-cols-2"><button onClick={()=>navigate("shop")} className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#fff1da] to-[#ffe1eb] p-5 text-left"><span className="text-[10px] font-black tracking-[.16em] text-orange-600">SHOP & EARN</span><b className="mt-2 block max-w-[13rem] text-lg leading-tight text-[#332234]">Compare prices and earn on every eligible order</b><span className="mt-4 inline-flex items-center gap-1 text-xs font-extrabold text-violet-700">Explore deals <ChevronRight className="h-4 w-4" /></span><ShoppingBag className="absolute -bottom-3 -right-2 h-24 w-24 rotate-[-10deg] text-orange-300/60" /></button><button onClick={()=>navigate("games")} className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#eae3ff] to-[#dff4ff] p-5 text-left"><span className="text-[10px] font-black tracking-[.16em] text-violet-600">FEATURED GAME</span><b className="mt-2 block max-w-[13rem] text-lg leading-tight text-[#29213a]">Complete the weekly challenge and unlock rewards</b><span className="mt-4 inline-flex items-center gap-1 text-xs font-extrabold text-violet-700">View challenge <ChevronRight className="h-4 w-4" /></span><Gamepad2 className="absolute -bottom-3 -right-2 h-24 w-24 rotate-[-8deg] text-violet-300/60" /></button></div></section>
     <section><SectionTitle title="Announcements" /><button onClick={()=>open("notifications")} className="flex w-full items-center gap-3 rounded-2xl border border-violet-100 bg-violet-50/60 p-4 text-left"><span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-violet-600 text-white"><Megaphone className="h-5 w-5" /></span><span className="min-w-0 flex-1"><b className="block text-sm text-[#282133]">Welcome to the new Glonni Ads</b><span className="mt-0.5 block text-xs leading-5 text-slate-500">Explore tasks, compare store rewards and complete game missions.</span></span><ChevronRight className="h-5 w-5 text-violet-400" /></button></section>
     <section className="rounded-2xl border border-orange-100 bg-gradient-to-r from-orange-50 to-rose-50 p-4"><div className="flex items-center gap-2 text-sm font-extrabold text-orange-700"><Flame className="h-5 w-5" fill="currentColor" /> Start your 7-day streak</div><p className="mt-1 text-xs text-slate-600">Complete one task today and keep coming back.</p><div className="mt-4 grid grid-cols-7 gap-2">{["M","T","W","T","F","S","S"].map((d,index) => <div key={`${d}${index}`} className="text-center"><span className={`mx-auto grid h-8 w-8 place-items-center rounded-full ${index === 0 ? "bg-orange-500 text-white" : "bg-white text-orange-400"}`}><Flame className="h-4 w-4" /></span><span className="mt-1 block text-[10px] font-bold text-slate-500">{d}</span></div>)}</div></section>
@@ -311,11 +338,11 @@ function GamesScreen({ notify }: { notify:(m:string)=>void }) {
   {visible.length===0&&<EmptyState icon={Gamepad2} title="No games in this category" body="Try another filter to see available game missions."/>}</div>;
 }
 
-function ProfileScreen({ open }: { open:(detail:DetailKey)=>void }) {
+function ProfileScreen({ open, userName }: { open:(detail:DetailKey)=>void; userName:string }) {
   const account=[{icon:CircleUserRound,title:"Personal information",body:"Name, mobile number and email",key:"personal"},{icon:Wallet,title:"Wallet",body:"Balance and withdrawals",key:"wallet"},{icon:History,title:"Earning history",body:"All reward activity",key:"history"},{icon:Landmark,title:"UPI / Bank details",body:"Manage payout account",key:"payout"},{icon:ShieldCheck,title:"KYC verification",body:"1 of 4 steps complete",key:"kyc"}] as const;
   const settings=[{icon:Settings2,title:"Notification preferences",body:"Rewards, tasks and promotions",key:"preferences"},{icon:Languages,title:"Language",body:"English",key:"language"},{icon:CircleHelp,title:"Help & support",body:"FAQs and support tickets",key:"support"},{icon:FileText,title:"Terms & privacy",body:"Policies and account rules",key:"legal"}] as const;
   const menu=(items:typeof account|typeof settings)=><div className="overflow-hidden rounded-2xl border border-[#ece9f2] bg-white">{items.map(({icon:Icon,title,body,key})=><button onClick={()=>open(key)} key={title} className="flex w-full items-center gap-3 border-b border-[#f0edf5] p-4 text-left transition last:border-0 hover:bg-violet-50/40"><span className="grid h-11 w-11 place-items-center rounded-xl bg-violet-50 text-violet-600"><Icon className="h-5 w-5"/></span><span className="flex-1"><b className="block text-sm text-[#282133]">{title}</b><span className="text-xs text-slate-500">{body}</span></span><ChevronRight className="h-5 w-5 text-slate-300"/></button>)}</div>;
-  return <div className="space-y-5"><section className={`rounded-[28px] bg-gradient-to-br ${purple} p-6 text-white`}><div className="flex items-center gap-4"><button onClick={()=>open("personal")} aria-label="Edit profile photo" className="relative grid h-16 w-16 place-items-center rounded-full bg-white/20"><CircleUserRound className="h-9 w-9"/><span className="absolute -bottom-1 -right-1 grid h-6 w-6 place-items-center rounded-full bg-white text-violet-600"><Camera className="h-3.5 w-3.5"/></span></button><span className="flex-1"><b className="block text-xl">Shaneel</b><span className="mt-1 flex items-center gap-1 text-xs text-white/75"><BadgeCheck className="h-4 w-4"/> Member account</span></span><button onClick={()=>open("personal")} className="rounded-full bg-white/15 px-3 py-2 text-xs font-extrabold">Edit</button></div><div className="mt-5 grid grid-cols-2 gap-3"><div className="rounded-2xl bg-white/10 p-3"><span className="text-xs text-white/70">Available balance</span><b className="mt-1 block text-xl">₹0.00</b></div><div className="rounded-2xl bg-white/10 p-3"><span className="text-xs text-white/70">KYC status</span><b className="mt-1 block text-xl">25%</b></div></div></section>
+  return <div className="space-y-5"><section className={`rounded-[28px] bg-gradient-to-br ${purple} p-6 text-white`}><div className="flex items-center gap-4"><button onClick={()=>open("personal")} aria-label="Edit profile photo" className="relative grid h-16 w-16 place-items-center rounded-full bg-white/20"><CircleUserRound className="h-9 w-9"/><span className="absolute -bottom-1 -right-1 grid h-6 w-6 place-items-center rounded-full bg-white text-violet-600"><Camera className="h-3.5 w-3.5"/></span></button><span className="flex-1"><b className="block text-xl">{userName}</b><span className="mt-1 flex items-center gap-1 text-xs text-white/75"><BadgeCheck className="h-4 w-4"/> Demo member account</span></span><button onClick={()=>open("personal")} className="rounded-full bg-white/15 px-3 py-2 text-xs font-extrabold">Edit</button></div><div className="mt-5 grid grid-cols-2 gap-3"><div className="rounded-2xl bg-white/10 p-3"><span className="text-xs text-white/70">Available balance</span><b className="mt-1 block text-xl">₹0.00</b></div><div className="rounded-2xl bg-white/10 p-3"><span className="text-xs text-white/70">KYC status</span><b className="mt-1 block text-xl">25%</b></div></div></section>
   <section><SectionTitle title="Account & rewards"/>{menu(account)}</section><section><SectionTitle title="Settings & support"/>{menu(settings)}</section>
   <button onClick={()=>open("logout")} className="flex w-full items-center justify-center gap-2 rounded-2xl border border-rose-100 bg-white py-4 text-sm font-extrabold text-rose-500"><LogOut className="h-4 w-4"/>Log out</button><div className="flex items-center gap-3 rounded-2xl bg-emerald-50 p-4 text-emerald-800"><LockKeyhole className="h-5 w-5"/><p className="text-xs leading-5"><b className="block">Your rewards stay protected</b>Secure verification will be required before withdrawal.</p></div><p className="text-center text-[10px] font-semibold text-slate-400">Glonni Ads v0.1 · Frontend preview</p></div>;
 }
