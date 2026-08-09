@@ -2,7 +2,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars -- compact mock document cards retain map indices for future ordering */
 
 import { Activity, ArrowDownRight, ArrowUpRight, BadgeIndianRupee, Bell, Bot, CalendarDays, CheckCircle2, ChevronDown, CircleAlert, Clock3, Download, FileText, Gamepad2, Gift, HandCoins, Headphones, LayoutDashboard, Menu, MonitorPlay, Moon, MoreHorizontal, PackageCheck, PanelLeftClose, Plus, RefreshCw, Search, Send, Settings, ShieldAlert, ShieldCheck, ShoppingBag, SlidersHorizontal, Sparkles, Store, TrendingUp, UserCheck, Users, WalletCards, X, Ban, ChevronLeft, ChevronRight, Copy, Eye, Filter, Mail, MapPin, Phone, RotateCcw, Smartphone, UserRound, UserX, Wifi } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 type NavItem = { label: string; icon: typeof LayoutDashboard; badge?: string };
 type NavGroup = { label?: string; items: NavItem[] };
@@ -28,6 +28,7 @@ const adminViewSlugs: Record<AdminView, string> = {
 };
 
 const adminSlugViews = Object.fromEntries(Object.entries(adminViewSlugs).map(([view, slug]) => [slug, view])) as Record<string, AdminView>;
+const adminViews = Object.keys(adminViewSlugs) as AdminView[];
 
 function tone(value: string) {
   if (["Matched", "Ready to match", "Passed"].includes(value)) return "bg-emerald-50 text-emerald-700";
@@ -2823,7 +2824,14 @@ export default function AdminDashboardPage() {
   const [range, setRange] = useState<keyof typeof chartSets>("30 days");
   const [transactionFilter, setTransactionFilter] = useState("All");
   const [toast, setToast] = useState("");
+  const [commandOpen, setCommandOpen] = useState(false);
+  const [commandQuery, setCommandQuery] = useState("");
+  const commandInputRef = useRef<HTMLInputElement>(null);
   const filteredTransactions = useMemo(() => (transactionFilter === "All" ? transactions : transactions.filter((t) => t.status === transactionFilter)), [transactionFilter]);
+  const commandResults = useMemo(() => {
+    const query = commandQuery.trim().toLowerCase();
+    return adminViews.filter((view) => !query || view.toLowerCase().includes(query));
+  }, [commandQuery]);
   const action = (message: string) => {
     setToast(message);
     window.setTimeout(() => setToast(""), 2400);
@@ -2872,8 +2880,30 @@ export default function AdminDashboardPage() {
     return () => window.removeEventListener("popstate", handlePopState);
   }, [syncHistoryControls]);
 
+  useEffect(() => {
+    const handleKeyboard = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        setCommandOpen(true);
+      }
+      if (event.key === "Escape") {
+        setCommandOpen(false);
+        setCommandQuery("");
+        setMenuOpen(false);
+        setNoticeOpen(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyboard);
+    return () => window.removeEventListener("keydown", handleKeyboard);
+  }, []);
+
+  useEffect(() => {
+    if (commandOpen) window.setTimeout(() => commandInputRef.current?.focus(), 0);
+  }, [commandOpen]);
+
   return (
     <div className="admin-root min-h-screen bg-[#f7f8fc] text-[#172033]">
+      <a href="#admin-content" className="admin-skip-link">Skip to admin content</a>
       {toast && (
         <div role="status" className="fixed bottom-6 right-6 z-[80] flex items-center gap-2 rounded-xl bg-[#172033] px-4 py-3 text-sm font-medium text-white shadow-2xl">
           <CheckCircle2 size={17} className="text-emerald-400" />
@@ -2881,6 +2911,29 @@ export default function AdminDashboardPage() {
         </div>
       )}
       {menuOpen && <button aria-label="Close admin navigation" className="fixed inset-0 z-40 bg-slate-950/40 lg:hidden" onClick={() => setMenuOpen(false)} />}
+      {commandOpen && (
+        <div className="fixed inset-0 z-[120] flex items-start justify-center bg-slate-950/55 p-4 pt-[12vh]" onMouseDown={() => { setCommandOpen(false); setCommandQuery(""); }}>
+          <section role="dialog" aria-modal="true" aria-labelledby="admin-command-title" className="w-full max-w-xl overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl" onMouseDown={(event) => event.stopPropagation()}>
+            <h2 id="admin-command-title" className="sr-only">Search admin sections</h2>
+            <label className="flex h-14 items-center gap-3 border-b px-4">
+              <Search size={19} className="text-slate-400" />
+              <span className="sr-only">Search admin sections</span>
+              <input ref={commandInputRef} value={commandQuery} onChange={(event) => setCommandQuery(event.target.value)} placeholder="Go to an admin section…" className="h-full w-full bg-transparent text-sm outline-none" />
+              <kbd className="rounded border bg-slate-50 px-2 py-1 text-[10px] text-slate-400">ESC</kbd>
+            </label>
+            <div className="admin-scroll max-h-[50vh] overflow-y-auto p-2">
+              {commandResults.map((view) => (
+                <button key={view} onClick={() => { navigateTo(view); setCommandOpen(false); setCommandQuery(""); }} className={`flex min-h-11 w-full items-center rounded-xl px-3 text-left text-sm ${view === activeView ? "bg-violet-50 font-bold text-violet-700" : "text-slate-600 hover:bg-slate-50"}`}>
+                  <Search size={15} className="mr-3 text-slate-400" />{view}
+                  {view === activeView && <span className="ml-auto text-[10px] uppercase tracking-wide">Current</span>}
+                </button>
+              ))}
+              {commandResults.length === 0 && <div className="p-8 text-center text-sm text-slate-500">No admin section matches “{commandQuery}”.</div>}
+            </div>
+            <p className="border-t bg-slate-50 px-4 py-2 text-[10px] text-slate-400">Search covers all completed admin modules · Mock console</p>
+          </section>
+        </div>
+      )}
       <aside className={`fixed inset-y-0 left-0 z-50 flex w-[280px] flex-col bg-[#10172a] text-white transition-all duration-300 ${collapsed ? "lg:w-[88px]" : "lg:w-[260px]"} ${menuOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}>
         <div className="flex h-[76px] items-center gap-3 border-b border-white/10 px-5">
           <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-[#8157ff] to-[#5522da] font-black shadow-lg shadow-purple-950/40">G</div>
@@ -2907,6 +2960,8 @@ export default function AdminDashboardPage() {
                     <button
                       key={item.label}
                       title={collapsed ? item.label : undefined}
+                      aria-current={active ? "page" : undefined}
+                      aria-disabled={!enabled}
                       onClick={() => {
                         if (enabled) {
                           const view = item.label as AdminView;
@@ -2914,12 +2969,13 @@ export default function AdminDashboardPage() {
                           else setMenuOpen(false);
                         } else action(`${item.label} will be built in its planned step`);
                       }}
-                      className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-[13px] font-medium ${active ? "bg-gradient-to-r from-[#7748ee] to-[#5b27d8] text-white shadow-lg shadow-purple-950/25" : "text-slate-300 hover:bg-white/5 hover:text-white"}`}
+                      className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-[13px] font-medium ${active ? "bg-gradient-to-r from-[#7748ee] to-[#5b27d8] text-white shadow-lg shadow-purple-950/25" : enabled ? "text-slate-300 hover:bg-white/5 hover:text-white" : "cursor-not-allowed text-slate-600"}`}
                     >
                       <Icon size={18} className="shrink-0" />
                       {!collapsed && (
                         <>
                           <span className="truncate">{item.label}</span>
+                          {!enabled && <span className="ml-auto rounded-full border border-white/10 px-2 py-0.5 text-[9px] text-slate-500">Future</span>}
                           {item.badge && <span className="ml-auto rounded-full bg-rose-500 px-2 py-0.5 text-[10px] text-white">{item.badge}</span>}
                         </>
                       )}
@@ -2959,12 +3015,14 @@ export default function AdminDashboardPage() {
               <ChevronRight size={19} />
             </button>
           </div>
-          <label className="ml-3 hidden h-11 w-full max-w-[440px] items-center gap-3 rounded-xl bg-[#f5f6fa] px-4 md:flex">
+          <button onClick={() => setCommandOpen(true)} className="ml-2 grid h-11 w-11 place-items-center rounded-xl text-slate-500 hover:bg-slate-100 md:hidden" aria-label="Search admin sections">
+            <Search size={19} />
+          </button>
+          <button onClick={() => setCommandOpen(true)} className="ml-3 hidden h-11 w-full max-w-[440px] items-center gap-3 rounded-xl bg-[#f5f6fa] px-4 text-left md:flex" aria-label="Search admin sections">
             <Search size={18} className="text-slate-400" />
-            <span className="sr-only">Search admin panel</span>
-            <input className="w-full bg-transparent text-sm outline-none placeholder:text-slate-400" placeholder="Search users, rewards, withdrawals..." />
+            <span className="w-full text-sm text-slate-400">Search admin sections…</span>
             <kbd className="rounded border border-slate-200 bg-white px-2 py-1 text-[10px] text-slate-400">⌘ K</kbd>
-          </label>
+          </button>
           <div className="ml-auto flex items-center gap-2">
             <button aria-label="Toggle appearance" onClick={() => action("Admin dark theme is planned for Settings")} className="grid h-11 w-11 place-items-center rounded-xl text-slate-500 hover:bg-slate-100">
               <Moon size={19} />
@@ -3003,7 +3061,7 @@ export default function AdminDashboardPage() {
           </div>
         </header>
 
-        <main className="px-4 py-6 md:px-7 md:py-7">
+        <main id="admin-content" tabIndex={-1} className="px-4 py-6 md:px-7 md:py-7">
           <div className="mx-auto max-w-[1500px]">
             {activeView === "Users" ? (
               <UsersManagement action={action} />
@@ -3267,7 +3325,7 @@ export default function AdminDashboardPage() {
                     </table>
                     {filteredTransactions.length === 0 && <div className="p-10 text-center text-sm text-slate-500">No mock transactions match this filter.</div>}
                   </div>
-                  <button onClick={() => action("Complete transaction ledger will be built in Step 4")} className="m-4 text-xs font-semibold text-violet-600 md:mx-6">
+                  <button onClick={() => navigateTo("Wallet & Transactions")} className="m-4 text-xs font-semibold text-violet-600 md:mx-6">
                     View complete ledger →
                   </button>
                 </section>
@@ -3340,6 +3398,10 @@ export default function AdminDashboardPage() {
               </>
             )}
           </div>
+          <footer className="mx-auto mt-8 flex max-w-[1500px] flex-col gap-2 border-t border-slate-200 py-5 text-[11px] text-slate-400 sm:flex-row sm:items-center sm:justify-between">
+            <span>Glonni Ads Admin · Final Step 18 interface audit</span>
+            <span>Mock data only · No live providers, payments, messages or account changes</span>
+          </footer>
         </main>
       </div>
     </div>
