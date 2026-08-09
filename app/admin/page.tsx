@@ -2860,6 +2860,15 @@ export default function AdminDashboardPage() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }, []);
 
+  const goBack = useCallback(() => {
+    const position = Number(window.history.state?.adminPosition ?? 0);
+    if (position > 0) {
+      window.history.back();
+      return;
+    }
+    if (activeView !== "Dashboard") navigateTo("Dashboard");
+  }, [activeView, navigateTo]);
+
   useEffect(() => {
     const initialView = getAdminViewFromUrl();
     const initialPosition = Number(window.history.state?.adminPosition ?? 0);
@@ -2957,17 +2966,22 @@ export default function AdminDashboardPage() {
                   const active = item.label === activeView;
                   const Icon = item.icon;
                   return (
-                    <button
+                    <a
                       key={item.label}
+                      href={enabled ? `/admin?section=${adminViewSlugs[item.label as AdminView]}` : undefined}
                       title={collapsed ? item.label : undefined}
                       aria-current={active ? "page" : undefined}
                       aria-disabled={!enabled}
-                      onClick={() => {
+                      onClick={(event) => {
                         if (enabled) {
+                          event.preventDefault();
                           const view = item.label as AdminView;
                           if (view !== activeView) navigateTo(view);
                           else setMenuOpen(false);
-                        } else action(`${item.label} will be built in its planned step`);
+                        } else {
+                          event.preventDefault();
+                          action(`${item.label} will be built in its planned step`);
+                        }
                       }}
                       className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-[13px] font-medium ${active ? "bg-gradient-to-r from-[#7748ee] to-[#5b27d8] text-white shadow-lg shadow-purple-950/25" : enabled ? "text-slate-300 hover:bg-white/5 hover:text-white" : "cursor-not-allowed text-slate-600"}`}
                     >
@@ -2979,7 +2993,7 @@ export default function AdminDashboardPage() {
                           {item.badge && <span className="ml-auto rounded-full bg-rose-500 px-2 py-0.5 text-[10px] text-white">{item.badge}</span>}
                         </>
                       )}
-                    </button>
+                    </a>
                   );
                 })}
               </div>
@@ -3007,11 +3021,11 @@ export default function AdminDashboardPage() {
           <button aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"} className="hidden h-11 w-11 place-items-center rounded-xl text-slate-600 hover:bg-slate-100 lg:grid" onClick={() => setCollapsed(!collapsed)}>
             <PanelLeftClose size={21} className={collapsed ? "rotate-180" : ""} />
           </button>
-          <div className="ml-2 hidden items-center gap-1 sm:flex" aria-label="Admin page history">
-            <button aria-label="Go to previous admin section" title="Back" disabled={historyPosition <= 0} onClick={() => window.history.back()} className="grid h-10 w-10 place-items-center rounded-xl text-slate-500 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-30">
+          <div className="ml-2 flex items-center gap-1" aria-label="Admin page history">
+            <button aria-label={historyPosition > 0 ? "Go to previous admin section" : "Go to admin home"} title={historyPosition > 0 ? "Back" : "Admin home"} disabled={historyPosition <= 0 && activeView === "Dashboard"} onClick={goBack} className="grid h-10 w-10 place-items-center rounded-xl text-slate-500 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-30">
               <ChevronLeft size={19} />
             </button>
-            <button aria-label="Go to next admin section" title="Forward" disabled={historyPosition >= historyLength - 1} onClick={() => window.history.forward()} className="grid h-10 w-10 place-items-center rounded-xl text-slate-500 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-30">
+            <button aria-label="Go to next admin section" title="Forward" disabled={historyPosition >= historyLength - 1} onClick={() => window.history.forward()} className="hidden h-10 w-10 place-items-center rounded-xl text-slate-500 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-30 sm:grid">
               <ChevronRight size={19} />
             </button>
           </div>
