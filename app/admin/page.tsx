@@ -1,3 +1,6 @@
+Warning: truncated output (original token count: 53723)
+Total output lines: 3139
+
 "use client";
 /* eslint-disable @typescript-eslint/no-unused-vars -- compact mock document cards retain map indices for future ordering */
 
@@ -6,7 +9,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 type NavItem = { label: string; icon: typeof LayoutDashboard; badge?: string };
 type NavGroup = { label?: string; items: NavItem[] };
-type AdminView = "Dashboard" | "Users" | "Wallet & Transactions" | "Withdrawals" | "KYC Verification" | "Fraud & Risk" | "Ad Networks" | "Surveys" | "App Install Offers";
+type AdminView = "Dashboard" | "Users" | "Wallet & Transactions" | "Withdrawals" | "KYC Verification" | "Fraud & Risk" | "Ad Networks" | "Surveys" | "App Install Offers" | "Games";
 
 const adminViewSlugs: Record<AdminView, string> = {
   Dashboard: "dashboard",
@@ -18,6 +21,7 @@ const adminViewSlugs: Record<AdminView, string> = {
   "Ad Networks": "ad-networks",
   Surveys: "surveys",
   "App Install Offers": "app-install-offers",
+  Games: "games",
 };
 
 const adminSlugViews = Object.fromEntries(Object.entries(adminViewSlugs).map(([view, slug]) => [slug, view])) as Record<string, AdminView>;
@@ -2172,247 +2176,7 @@ function FraudRiskControl({ action }: { action: (message: string) => void }) {
         </div>
         <div className="border-t px-5 py-4 text-xs text-slate-500">Showing {rows.length} mock cases · Signals require human review before enforcement</div>
       </section>
-      <section className="mt-6 grid gap-6 xl:grid-cols-2">
-        <article className="rounded-2xl border bg-white p-5 shadow-sm">
-          <h2 className="font-bold">Detection coverage</h2>
-          <p className="mt-1 text-xs text-slate-500">Mock rules across the earning journey.</p>
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            {[
-              ["Device & account links", "Fingerprint, IP and payout identity", Smartphone],
-              ["Reward velocity", "Impossible completion patterns", Activity],
-              ["Provider integrity", "Callback and attribution checks", RefreshCw],
-              ["Withdrawal protection", "KYC, ownership and hold rules", ShieldCheck],
-            ].map(([a, b, I]) => (
-              <div key={a as string} className="flex gap-3 rounded-xl bg-slate-50 p-3">
-                <I size={18} className="text-violet-600" />
-                <div>
-                  <b className="text-xs">{a as string}</b>
-                  <p className="text-[10px] text-slate-500">{b as string}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </article>
-        <article className="rounded-2xl border bg-white p-5 shadow-sm">
-          <h2 className="font-bold">Decision safeguards</h2>
-          <p className="mt-1 text-xs text-slate-500">Risk score assists review; it does not automatically punish users.</p>
-          <div className="mt-4 space-y-3 text-xs">
-            {["Evidence shown before every decision", "Reason required for warnings, blocks and clearance", "Held rewards remain traceable in the wallet ledger", "Appeals preserve the original decision and reviewer"].map((x, i) => (
-              <div key={x} className="flex gap-3 rounded-xl border p-3">
-                <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-violet-50 text-[10px] font-bold text-violet-700">{i + 1}</span>
-                <span>{x}</span>
-              </div>
-            ))}
-          </div>
-        </article>
-      </section>
-      {selected && (
-        <div className="fixed inset-0 z-[70] flex justify-end">
-          <button aria-label="Close risk investigation" onClick={() => setSelected(null)} className="absolute inset-0 bg-slate-950/40" />
-          <aside role="dialog" aria-modal="true" className="admin-scroll relative h-full w-full max-w-[660px] overflow-y-auto bg-[#f7f8fc] shadow-2xl">
-            <header className="sticky top-0 z-10 flex items-center border-b bg-white p-5">
-              <div>
-                <p className="text-xs text-slate-400">Risk investigation</p>
-                <h2 className="font-bold">
-                  {selected.id} · {selected.user}
-                </h2>
-              </div>
-              <button aria-label="Close investigation" onClick={() => setSelected(null)} className="ml-auto grid h-10 w-10 place-items-center">
-                <X />
-              </button>
-            </header>
-            <div className="space-y-4 p-5">
-              <section className="rounded-2xl border bg-white p-5">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className={`rounded-full px-3 py-1 text-xs font-bold ${severityTone(selected.severity)}`}>
-                    {selected.severity} · {selected.score}/100
-                  </span>
-                  <span className={`rounded-full px-3 py-1 text-xs font-bold ${statusTone(selected.status)}`}>{selected.status}</span>
-                </div>
-                <h3 className="mt-4 text-lg font-bold">{selected.signal}</h3>
-                <p className="text-xs text-slate-500">
-                  {selected.source} · {selected.created}
-                </p>
-                <dl className="mt-5 grid gap-3 text-xs sm:grid-cols-2">
-                  {[
-                    ["User", `${selected.user} · ${selected.userId}`],
-                    ["Protected value", selected.amount],
-                    ["Device", selected.device],
-                    ["Last IP", selected.ip],
-                  ].map((x) => (
-                    <div key={x[0]} className="rounded-xl bg-slate-50 p-3">
-                      <dt className="text-[10px] text-slate-400">{x[0]}</dt>
-                      <dd className="mt-1 font-bold">{x[1]}</dd>
-                    </div>
-                  ))}
-                </dl>
-              </section>
-              <section className="rounded-2xl border bg-white p-5">
-                <h3 className="font-bold">Evidence timeline</h3>
-                <div className="mt-4 space-y-4 border-l-2 border-violet-100 pl-4">
-                  {selected.evidence.map((x, i) => (
-                    <div key={x}>
-                      <b className="text-xs">Signal {i + 1}</b>
-                      <p className="mt-1 text-xs text-slate-500">{x}</p>
-                    </div>
-                  ))}
-                </div>
-              </section>
-              <section className="rounded-2xl border bg-white p-5">
-                <h3 className="font-bold">Investigation actions</h3>
-                <p className="mt-1 text-xs text-slate-500">Every choice requires a reason and creates a mock audit record.</p>
-                <div className="mt-4 flex flex-wrap gap-2">
-                  <button onClick={() => setDecision("clear")} className="h-10 rounded-xl border border-emerald-200 px-4 text-xs font-bold text-emerald-700">
-                    Clear case
-                  </button>
-                  <button onClick={() => setDecision("warn")} className="h-10 rounded-xl border border-amber-200 px-4 text-xs font-bold text-amber-700">
-                    Warn user
-                  </button>
-                  <button onClick={() => setDecision("block")} className="h-10 rounded-xl bg-rose-600 px-4 text-xs font-bold text-white">
-                    Block account &amp; rewards
-                  </button>
-                  {selected.status === "Appealed" && (
-                    <button onClick={() => setDecision("appeal")} className="h-10 rounded-xl bg-violet-600 px-4 text-xs font-bold text-white">
-                      Resolve appeal
-                    </button>
-                  )}
-                </div>
-              </section>
-            </div>
-          </aside>
-        </div>
-      )}
-      {decision && selected && (
-        <div className="fixed inset-0 z-[90] grid place-items-center bg-slate-950/50 p-4">
-          <div role="alertdialog" aria-modal="true" className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
-            <h3 className="text-lg font-bold capitalize">Confirm {decision} decision</h3>
-            <p className="mt-2 text-xs leading-5 text-slate-500">This is a mock action for {selected.id}. Production will require permissions, server enforcement and an immutable audit record.</p>
-            <textarea value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Required investigation reason" className="mt-4 h-24 w-full rounded-xl border p-3 text-xs outline-none focus:border-violet-400" />
-            <div className="mt-5 flex justify-end gap-2">
-              <button
-                onClick={() => {
-                  setDecision(null);
-                  setReason("");
-                }}
-                className="h-10 rounded-xl border px-4 text-xs font-bold"
-              >
-                Cancel
-              </button>
-              <button disabled={!reason.trim()} onClick={confirm} className={`h-10 rounded-xl px-4 text-xs font-bold text-white disabled:opacity-40 ${decision === "block" ? "bg-rose-600" : "bg-violet-600"}`}>
-                Confirm decision
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </>
-  );
-}
-
-type AdProvider = {
-  id: string;
-  name: string;
-  model: "SDK" | "API" | "Offerwall";
-  status: "Active" | "Paused" | "Draft";
-  health: "Healthy" | "Degraded" | "Not tested";
-  priority: number;
-  fill: number;
-  impressions: number;
-  completions: number;
-  ecpm: number;
-  revenue: number;
-  rewardCost: number;
-  postback: string;
-};
-
-const initialAdProviders: AdProvider[] = [
-  { id: "NET-001", name: "Reward Network Alpha", model: "SDK", status: "Active", health: "Healthy", priority: 1, fill: 91.4, impressions: 184220, completions: 146802, ecpm: 148, revenue: 27264, rewardCost: 11744, postback: "Verified 2 min ago" },
-  { id: "NET-002", name: "Video Partner Beta", model: "API", status: "Active", health: "Degraded", priority: 2, fill: 73.8, impressions: 96840, completions: 70125, ecpm: 132, revenue: 12783, rewardCost: 5610, postback: "Delayed 8 min" },
-  { id: "NET-003", name: "Offerwall Demo", model: "Offerwall", status: "Paused", health: "Healthy", priority: 3, fill: 82.1, impressions: 44860, completions: 31092, ecpm: 118, revenue: 5293, rewardCost: 2487, postback: "Verified 1 hr ago" },
-  { id: "NET-004", name: "Future Provider Template", model: "API", status: "Draft", health: "Not tested", priority: 4, fill: 0, impressions: 0, completions: 0, ecpm: 0, revenue: 0, rewardCost: 0, postback: "Not configured" },
-];
-
-const adRewardEvents = [
-  { id: "AD-RW-84192", user: "Priya Reddy", provider: "Reward Network Alpha", amount: "₹0.80", status: "Approved", signal: "Clean", time: "2 min ago" },
-  { id: "AD-RW-84191", user: "Karthik Rao", provider: "Video Partner Beta", amount: "₹0.80", status: "Pending", signal: "Callback delayed", time: "6 min ago" },
-  { id: "AD-RW-84190", user: "Aarav Mehta", provider: "Reward Network Alpha", amount: "₹0.80", status: "Held", signal: "Velocity check", time: "11 min ago" },
-  { id: "AD-RW-84189", user: "Sana Khan", provider: "Video Partner Beta", amount: "₹0.80", status: "Duplicate", signal: "Repeated event ID", time: "18 min ago" },
-  { id: "AD-RW-84188", user: "Vikram Singh", provider: "Reward Network Alpha", amount: "₹0.80", status: "Approved", signal: "Clean", time: "24 min ago" },
-];
-
-function AdNetworksManagement({ action }: { action: (message: string) => void }) {
-  const [providers, setProviders] = useState(initialAdProviders);
-  const [selected, setSelected] = useState<AdProvider | null>(null);
-  const [tab, setTab] = useState<"Networks" | "Reward events" | "Claims & postbacks">("Networks");
-  const [range, setRange] = useState("30 days");
-  const [addOpen, setAddOpen] = useState(false);
-  const [confirmAction, setConfirmAction] = useState<"pause" | "activate" | "remove" | null>(null);
-  const [networkName, setNetworkName] = useState("");
-  const [integration, setIntegration] = useState<AdProvider["model"]>("API");
-  const [reason, setReason] = useState("");
-  const [eventFilter, setEventFilter] = useState("All");
-
-  const activeProviders = providers.filter((provider) => provider.status === "Active").length;
-  const totalRevenue = providers.reduce((sum, provider) => sum + provider.revenue, 0);
-  const totalRewards = providers.reduce((sum, provider) => sum + provider.rewardCost, 0);
-  const averageFill = providers.filter((provider) => provider.status === "Active").reduce((sum, provider, _, list) => sum + provider.fill / list.length, 0);
-  const filteredEvents = eventFilter === "All" ? adRewardEvents : adRewardEvents.filter((event) => event.status === eventFilter);
-
-  const addNetwork = () => {
-    if (!networkName.trim()) return;
-    const newProvider: AdProvider = {
-      id: `NET-${String(providers.length + 1).padStart(3, "0")}`,
-      name: networkName.trim(), model: integration, status: "Draft", health: "Not tested",
-      priority: providers.length + 1, fill: 0, impressions: 0, completions: 0, ecpm: 0, revenue: 0, rewardCost: 0, postback: "Not configured",
-    };
-    setProviders((current) => [...current, newProvider]);
-    setNetworkName("");
-    setAddOpen(false);
-    action("New network draft added to mock configuration");
-  };
-
-  const confirmProviderAction = () => {
-    if (!selected || !confirmAction || !reason.trim()) return;
-    if (confirmAction === "remove") {
-      setProviders((current) => current.filter((provider) => provider.id !== selected.id));
-      setSelected(null);
-    } else {
-      const status = confirmAction === "pause" ? "Paused" : "Active";
-      setProviders((current) => current.map((provider) => provider.id === selected.id ? { ...provider, status } : provider));
-      setSelected((current) => current ? { ...current, status } : current);
-    }
-    action(`Mock network ${confirmAction} action recorded`);
-    setConfirmAction(null);
-    setReason("");
-  };
-
-  return (
-    <>
-      <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-        <div>
-          <div className="mb-2 text-xs text-slate-400">Earnings <span className="px-2">›</span> Ad Networks</div>
-          <h1 className="text-2xl font-bold tracking-tight md:text-[28px]">Watch &amp; Earn / Ad Networks</h1>
-          <p className="mt-1 max-w-3xl text-sm text-slate-500">Configure any current or future rewarded-ad provider, monitor delivery, and investigate reward callbacks. All data and actions are mock-only.</p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <select aria-label="Ad network report period" value={range} onChange={(event) => setRange(event.target.value)} className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold outline-none">
-            <option>7 days</option><option>30 days</option><option>90 days</option>
-          </select>
-          <button onClick={() => action("Mock ad-network report exported")} className="flex h-11 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-xs font-bold text-slate-600"><Download size={16} />Export</button>
-          <button onClick={() => setAddOpen(true)} className="flex h-11 items-center gap-2 rounded-xl bg-violet-600 px-4 text-xs font-bold text-white shadow-lg shadow-violet-200"><Plus size={17} />Add new network</button>
-        </div>
-      </div>
-
-      <div className="mb-5 rounded-2xl border border-violet-100 bg-violet-50 p-4 text-xs leading-5 text-violet-800">
-        <strong>Provider-independent setup:</strong> no network is pre-installed. These generic records demonstrate the workflow; production providers will be added with their own credentials, SDK/API details, postback mapping and reward rules.
-      </div>
-
-      <section className="grid gap-4 sm:grid-cols-2 2xl:grid-cols-4">
-        {[
-          ["Active networks", `${activeProviders} of ${providers.length}`, "Priority fallback enabled", MonitorPlay, "bg-violet-50 text-violet-700"],
-          ["Average fill rate", `${averageFill.toFixed(1)}%`, `Across active providers · ${range}`, Activity, "bg-blue-50 text-blue-700"],
-          ["Provider revenue", `₹${totalRevenue.toLocaleString("en-IN")}`, "Mock gross revenue", TrendingUp, "bg-emerald-50 text-emerald-700"],
-          ["User reward cost", `₹${totalRewards.toLocaleString("en-IN")}`, `${totalRevenue ? ((totalRewards / totalRevenue) * 100).toFixed(1) : 0}% of revenue`, BadgeIndianRupee, "bg-amber-50 text-amber-700"],
+      <section classN…3723 tokens truncated…nue`, BadgeIndianRupee, "bg-amber-50 text-amber-700"],
         ].map(([label, value, note, Icon, color]) => (
           <article key={label as string} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <div className={`grid h-10 w-10 place-items-center rounded-xl ${color}`}><Icon size={19} /></div>
@@ -2549,6 +2313,47 @@ function AppInstallOffersManagement({action}:{action:(message:string)=>void}) {
     <section className="mt-6 grid gap-6 xl:grid-cols-2"><article className="rounded-2xl border bg-white p-5 shadow-sm"><h2 className="font-bold">Install verification safeguards</h2><div className="mt-4 space-y-3">{["Signed server postback required before reward approval","Package/app ID and campaign ID must match","Existing installs and duplicate device events are rejected","Milestones remain pending until the provider confirms them"].map((x,i)=><div key={x} className="flex gap-3 rounded-xl bg-slate-50 p-3 text-xs"><span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-violet-100 text-[10px] font-bold text-violet-700">{i+1}</span>{x}</div>)}</div></article><article className="rounded-2xl border bg-white p-5 shadow-sm"><h2 className="font-bold">Attribution &amp; fraud controls</h2><p className="mt-1 text-xs text-slate-500">Mock rules for later server-side implementation.</p><div className="mt-4 grid gap-3 sm:grid-cols-2">{[["Attribution window","Provider-defined expiry"],["Device integrity","Fingerprint + risk signals"],["Event idempotency","One credit per event ID"],["Reward state","Pending → verified → credited"]].map(x=><div key={x[0]} className="rounded-xl border p-3"><b className="text-xs">{x[0]}</b><p className="mt-1 text-[10px] text-slate-500">{x[1]}</p></div>)}</div></article></section>
     {selected&&<div className="fixed inset-0 z-[80] flex justify-end"><button aria-label="Close provider details" onClick={()=>setSelected(null)} className="absolute inset-0 bg-slate-950/40"/><aside role="dialog" aria-modal="true" className="relative h-full w-full max-w-[560px] overflow-y-auto bg-[#f7f8fc] p-5 shadow-2xl"><div className="flex items-center"><div><p className="text-xs text-slate-400">Install provider</p><h2 className="text-lg font-bold">{selected.name}</h2></div><button onClick={()=>setSelected(null)} className="ml-auto grid h-10 w-10 place-items-center"><X/></button></div><section className="mt-5 rounded-2xl border bg-white p-5"><h3 className="font-bold">Connection &amp; attribution</h3><div className="mt-4 grid gap-3 sm:grid-cols-2">{[["Integration",selected.model],["Priority",`#${selected.priority}`],["Postback","Signed callback placeholder"],["Attribution","Click ID + device match"]].map(x=><div key={x[0]} className="rounded-xl bg-slate-50 p-3"><p className="text-[10px] text-slate-400">{x[0]}</p><b className="text-xs">{x[1]}</b></div>)}</div><button onClick={()=>action("Mock provider configuration opened")} className="mt-4 h-10 rounded-xl border border-violet-200 px-4 text-xs font-bold text-violet-700">Edit configuration</button></section><section className="mt-4 rounded-2xl border bg-white p-5"><h3 className="font-bold">Guarded actions</h3><div className="mt-4 flex flex-wrap gap-2">{selected.status!=="Paused"&&<button onClick={()=>setDecision("pause")} className="h-10 rounded-xl border border-amber-200 px-4 text-xs font-bold text-amber-700">Pause</button>}{selected.status!=="Active"&&<button onClick={()=>setDecision("activate")} className="h-10 rounded-xl bg-violet-600 px-4 text-xs font-bold text-white">Activate</button>}<button onClick={()=>setDecision("remove")} className="h-10 rounded-xl border border-rose-200 px-4 text-xs font-bold text-rose-700">Remove</button></div></section><div className="mt-4 rounded-xl bg-amber-50 p-4 text-xs leading-5 text-amber-800">Credentials will be encrypted server-side later and must never appear in this mock client.</div></aside></div>}
     {addOpen&&<div className="fixed inset-0 z-[90] grid place-items-center bg-slate-950/50 p-4"><div role="dialog" aria-modal="true" className="w-full max-w-md rounded-2xl bg-white p-6"><h3 className="text-lg font-bold">Add install provider</h3><p className="mt-1 text-xs text-slate-500">Create a flexible inactive draft for any current or future provider.</p><label className="mt-5 block text-xs font-bold">Provider name<input autoFocus value={providerName} onChange={e=>setProviderName(e.target.value)} className="mt-2 h-11 w-full rounded-xl border px-3 font-normal outline-none" placeholder="Provider name"/></label><label className="mt-4 block text-xs font-bold">Integration type<select value={model} onChange={e=>setModel(e.target.value as InstallProvider["model"])} className="mt-2 h-11 w-full rounded-xl border bg-white px-3 font-normal"><option>API</option><option>SDK</option><option>Offerwall</option></select></label><div className="mt-4 rounded-xl bg-violet-50 p-3 text-[11px] text-violet-800">The provider stays Draft until credentials, attribution, postbacks, milestones and reward rules are tested.</div><div className="mt-6 flex justify-end gap-2"><button onClick={()=>setAddOpen(false)} className="h-10 rounded-xl border px-4 text-xs font-bold">Cancel</button><button disabled={!providerName.trim()} onClick={addProvider} className="h-10 rounded-xl bg-violet-600 px-4 text-xs font-bold text-white disabled:opacity-40">Create draft</button></div></div></div>}
+    {decision&&selected&&<div className="fixed inset-0 z-[100] grid place-items-center bg-slate-950/55 p-4"><div role="alertdialog" aria-modal="true" className="w-full max-w-md rounded-2xl bg-white p-6"><h3 className="text-lg font-bold capitalize">Confirm {decision}</h3><p className="mt-2 text-xs text-slate-500">This mock action affects {selected.name} and requires an audit reason.</p><textarea value={reason} onChange={e=>setReason(e.target.value)} placeholder="Required reason" className="mt-4 h-24 w-full rounded-xl border p-3 text-xs"/><div className="mt-5 flex justify-end gap-2"><button onClick={()=>{setDecision(null);setReason("")}} className="h-10 rounded-xl border px-4 text-xs font-bold">Cancel</button><button disabled={!reason.trim()} onClick={confirm} className={`h-10 rounded-xl px-4 text-xs font-bold text-white disabled:opacity-40 ${decision==="remove"?"bg-rose-600":"bg-violet-600"}`}>Confirm</button></div></div></div>}
+  </>;
+}
+
+type GameProvider = { id:string; name:string; model:"API"|"SDK"|"Offerwall"; status:"Active"|"Paused"|"Draft"; health:"Healthy"|"Delayed"|"Not tested"; priority:number; players:number; events:number; revenue:number; rewards:number };
+const initialGameProviders:GameProvider[]=[
+  {id:"GPR-001",name:"Play Partner Alpha",model:"SDK",status:"Active",health:"Healthy",priority:1,players:8420,events:26840,revenue:286400,rewards:174920},
+  {id:"GPR-002",name:"Mission Network Beta",model:"API",status:"Active",health:"Delayed",priority:2,players:4960,events:12980,revenue:164800,rewards:101240},
+  {id:"GPR-003",name:"Game Wall Demo",model:"Offerwall",status:"Paused",health:"Healthy",priority:3,players:2180,events:5840,revenue:68200,rewards:43160},
+  {id:"GPR-004",name:"Future Provider Template",model:"API",status:"Draft",health:"Not tested",priority:4,players:0,events:0,revenue:0,rewards:0},
+];
+const gameCampaigns=[
+  {id:"GAM-2841",game:"Puzzle Kingdom",provider:"Play Partner Alpha",mission:"Install → Level 10",reward:"₹85",progress:"3,482 / 5,000",expiry:"18 days",status:"Live"},
+  {id:"GAM-2838",game:"Cricket Champs",provider:"Mission Network Beta",mission:"Complete 5 matches",reward:"₹48",progress:"1,926 / 3,000",expiry:"9 days",status:"Live"},
+  {id:"GAM-2826",game:"Farm Story",provider:"Play Partner Alpha",mission:"Reach village level 15",reward:"₹120",progress:"2,000 / 2,000",expiry:"Expired",status:"Full"},
+  {id:"GAM-2812",game:"Word Sprint",provider:"Game Wall Demo",mission:"Play on 3 separate days",reward:"₹35",progress:"884 / 1,500",expiry:"Paused",status:"Paused"},
+];
+const gameEvents=[
+  {id:"GEV-91842",user:"Priya Reddy",game:"Puzzle Kingdom",milestone:"Reached level 10",reward:"₹85",status:"Approved",signal:"Signed event",time:"3 min ago"},
+  {id:"GEV-91841",user:"Karthik Rao",game:"Cricket Champs",milestone:"Match 5 completed",reward:"₹48",status:"Pending",signal:"Awaiting postback",time:"11 min ago"},
+  {id:"GEV-91840",user:"Sana Khan",game:"Farm Story",milestone:"Reached level 15",reward:"₹120",status:"Held",signal:"Fast progress review",time:"21 min ago"},
+  {id:"GEV-91839",user:"Aarav Mehta",game:"Puzzle Kingdom",milestone:"Reached level 10",reward:"₹85",status:"Rejected",signal:"Duplicate device event",time:"34 min ago"},
+];
+
+function GamesManagement({action}:{action:(message:string)=>void}) {
+  const [providers,setProviders]=useState(initialGameProviders); const [tab,setTab]=useState<"Providers"|"Games & missions"|"Player progress"|"Disputes">("Providers");
+  const [query,setQuery]=useState(""); const [selected,setSelected]=useState<GameProvider|null>(null); const [addOpen,setAddOpen]=useState(false); const [providerName,setProviderName]=useState("");
+  const [model,setModel]=useState<GameProvider["model"]>("API"); const [decision,setDecision]=useState<"pause"|"activate"|"remove"|null>(null); const [reason,setReason]=useState("");
+  const tone=(v:string)=>v==="Active"||v==="Healthy"||v==="Live"||v==="Approved"?"bg-emerald-100 text-emerald-700":v==="Paused"||v==="Delayed"||v==="Pending"||v==="Held"?"bg-amber-100 text-amber-700":v==="Draft"||v==="Not tested"?"bg-slate-100 text-slate-600":"bg-rose-100 text-rose-700";
+  const visible=providers.filter(p=>`${p.name} ${p.id} ${p.model}`.toLowerCase().includes(query.toLowerCase())); const totalPlayers=providers.reduce((s,p)=>s+p.players,0); const totalRevenue=providers.reduce((s,p)=>s+p.revenue,0); const totalRewards=providers.reduce((s,p)=>s+p.rewards,0);
+  const addProvider=()=>{if(!providerName.trim())return;const p:GameProvider={id:`GPR-${String(providers.length+1).padStart(3,"0")}`,name:providerName.trim(),model,status:"Draft",health:"Not tested",priority:providers.length+1,players:0,events:0,revenue:0,rewards:0};setProviders([...providers,p]);setProviderName("");setAddOpen(false);action(`${p.name} created as a mock game-provider draft`)};
+  const confirm=()=>{if(!selected||!decision||!reason.trim())return;setProviders(items=>decision==="remove"?items.filter(p=>p.id!==selected.id):items.map(p=>p.id===selected.id?{...p,status:decision==="pause"?"Paused":"Active"}:p));action(`${selected.name}: mock ${decision} recorded`);setSelected(null);setDecision(null);setReason("")};
+  return <>
+    <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between"><div><div className="mb-2 text-xs text-slate-400">Earnings <span className="px-2">›</span> Games</div><h1 className="text-2xl font-bold tracking-tight md:text-[28px]">Games Management</h1><p className="mt-1 max-w-3xl text-sm text-slate-500">Manage game providers, campaigns, missions, player milestones, expiries and reward disputes.</p></div><div className="flex flex-wrap gap-2"><button onClick={()=>action("Mock games report exported")} className="flex h-10 items-center gap-2 rounded-xl border bg-white px-4 text-xs font-bold"><Download size={15}/>Export</button><span className="flex h-10 items-center rounded-xl bg-violet-50 px-3 text-xs font-semibold text-violet-700">Step 11 · Mock data</span><button onClick={()=>setAddOpen(true)} className="flex h-10 items-center gap-2 rounded-xl bg-violet-600 px-4 text-xs font-bold text-white"><Plus size={15}/>Add provider</button></div></div>
+    <div className="mb-5 rounded-2xl border border-violet-100 bg-violet-50 p-4 text-xs leading-5 text-violet-800"><b>Provider-independent setup:</b> add any current or future game network. No real SDK, API, credentials, tracking or playable game is connected.</div>
+    <section className="grid gap-4 sm:grid-cols-2 2xl:grid-cols-4">{[["Active players",totalPlayers.toLocaleString("en-IN"),Gamepad2,"bg-violet-50 text-violet-700"],["Milestone events",providers.reduce((s,p)=>s+p.events,0).toLocaleString("en-IN"),CheckCircle2,"bg-emerald-50 text-emerald-700"],["Provider revenue",`₹${totalRevenue.toLocaleString("en-IN")}`,TrendingUp,"bg-blue-50 text-blue-700"],["User rewards",`₹${totalRewards.toLocaleString("en-IN")}`,BadgeIndianRupee,"bg-amber-50 text-amber-700"]].map(([l,v,I,s])=><article key={l as string} className="rounded-2xl border bg-white p-5 shadow-sm"><div className={`grid h-11 w-11 place-items-center rounded-xl ${s}`}><I size={20}/></div><p className="mt-4 text-xs text-slate-500">{l as string}</p><p className="mt-1 text-2xl font-bold">{v as string}</p></article>)}</section>
+    <section className="mt-6 overflow-hidden rounded-2xl border bg-white shadow-sm"><div className="flex flex-col gap-4 border-b p-5 lg:flex-row lg:items-center lg:justify-between"><div className="flex flex-wrap gap-1 rounded-xl bg-slate-100 p-1">{(["Providers","Games & missions","Player progress","Disputes"] as const).map(x=><button key={x} onClick={()=>setTab(x)} className={`rounded-lg px-4 py-2 text-xs font-bold ${tab===x?"bg-white text-violet-700 shadow-sm":"text-slate-500"}`}>{x}{x==="Disputes"&&<span className="ml-2 rounded-full bg-rose-100 px-2 py-0.5 text-[9px] text-rose-700">8</span>}</button>)}</div><label className="flex h-10 min-w-[260px] items-center gap-2 rounded-xl border px-3"><Search size={15} className="text-slate-400"/><input value={query} onChange={e=>setQuery(e.target.value)} aria-label="Search games workspace" placeholder="Search providers or IDs" className="w-full bg-transparent text-xs outline-none"/></label></div>
+    {tab==="Providers"?<div className="overflow-x-auto"><table className="w-full min-w-[1050px] text-left"><thead><tr className="bg-[#fafafd] text-[10px] uppercase tracking-wider text-slate-400">{["Provider","Priority / model","Status / health","Active players","Milestone events","Revenue / rewards","Action"].map(h=><th key={h} className="px-5 py-3">{h}</th>)}</tr></thead><tbody>{visible.map(p=><tr key={p.id} className="border-t text-xs hover:bg-violet-50/30"><td className="px-5 py-4"><b>{p.name}</b><p className="mt-1 font-mono text-[10px] text-violet-600">{p.id}</p></td><td className="px-5 py-4"><b>#{p.priority}</b><p className="text-[10px] text-slate-400">{p.model}</p></td><td className="px-5 py-4"><div className="flex gap-2"><span className={`rounded-full px-2 py-1 text-[9px] font-bold ${tone(p.status)}`}>{p.status}</span><span className={`rounded-full px-2 py-1 text-[9px] font-bold ${tone(p.health)}`}>{p.health}</span></div></td><td className="px-5 py-4 font-bold">{p.players.toLocaleString("en-IN")}</td><td className="px-5 py-4 font-bold">{p.events.toLocaleString("en-IN")}</td><td className="px-5 py-4"><b>₹{p.revenue.toLocaleString("en-IN")}</b><p className="text-[10px] text-slate-400">₹{p.rewards.toLocaleString("en-IN")} rewards</p></td><td className="px-5 py-4"><button onClick={()=>setSelected(p)} className="h-9 rounded-lg border px-3 font-bold text-violet-600">Manage</button></td></tr>)}</tbody></table></div>:tab==="Games & missions"?<div className="overflow-x-auto"><table className="w-full min-w-[1050px] text-left"><thead><tr className="bg-[#fafafd] text-[10px] uppercase text-slate-400">{["Game campaign","Provider","Mission / milestone","User reward","Progress","Expiry","Status"].map(h=><th key={h} className="px-5 py-3">{h}</th>)}</tr></thead><tbody>{gameCampaigns.map(c=><tr key={c.id} className="border-t text-xs"><td className="px-5 py-4"><b>{c.game}</b><p className="font-mono text-[10px] text-violet-600">{c.id}</p></td><td className="px-5 py-4">{c.provider}</td><td className="px-5 py-4 font-semibold">{c.mission}</td><td className="px-5 py-4 font-bold">{c.reward}</td><td className="px-5 py-4">{c.progress}</td><td className="px-5 py-4">{c.expiry}</td><td className="px-5 py-4"><span className={`rounded-full px-2 py-1 text-[10px] font-bold ${tone(c.status)}`}>{c.status}</span></td></tr>)}</tbody></table></div>:tab==="Player progress"?<div className="overflow-x-auto"><table className="w-full min-w-[980px] text-left"><thead><tr className="bg-[#fafafd] text-[10px] uppercase text-slate-400">{["Event / user","Game / milestone","Reward","Verification","Risk signal","Received"].map(h=><th key={h} className="px-5 py-3">{h}</th>)}</tr></thead><tbody>{gameEvents.map(e=><tr key={e.id} className="border-t text-xs"><td className="px-5 py-4"><b>{e.user}</b><p className="font-mono text-[10px] text-violet-600">{e.id}</p></td><td className="px-5 py-4"><b>{e.game}</b><p className="text-[10px] text-slate-400">{e.milestone}</p></td><td className="px-5 py-4 font-bold">{e.reward}</td><td className="px-5 py-4"><span className={`rounded-full px-2 py-1 text-[10px] font-bold ${tone(e.status)}`}>{e.status}</span></td><td className="px-5 py-4">{e.signal}</td><td className="px-5 py-4 text-slate-400">{e.time}</td></tr>)}</tbody></table></div>:<div className="grid gap-4 p-5 md:grid-cols-2 xl:grid-cols-4">{[["Missing milestone","3 open","Player reached target; event absent"],["Expired mission","2 open","Progress completed near campaign expiry"],["Progress mismatch","2 open","Provider and user progress differ"],["Reward held","1 open","Velocity or duplicate-device review"]].map(x=><article key={x[0]} className="rounded-xl border p-4"><span className="rounded-full bg-rose-100 px-2 py-1 text-[10px] font-bold text-rose-700">{x[1]}</span><h3 className="mt-3 text-sm font-bold">{x[0]}</h3><p className="mt-1 text-xs text-slate-500">{x[2]}</p><button onClick={()=>action(`${x[0]} mock queue opened`)} className="mt-4 text-xs font-bold text-violet-600">Review queue →</button></article>)}</div>}</section>
+    <section className="mt-6 grid gap-6 xl:grid-cols-2"><article className="rounded-2xl border bg-white p-5 shadow-sm"><h2 className="font-bold">Mission verification safeguards</h2><div className="mt-4 space-y-3">{["Signed server event required before milestone approval","Game, campaign, player and milestone IDs must match","Progress events are idempotent—one reward per milestone","Expired, duplicate and impossibly fast progress enters review"].map((x,i)=><div key={x} className="flex gap-3 rounded-xl bg-slate-50 p-3 text-xs"><span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-violet-100 text-[10px] font-bold text-violet-700">{i+1}</span>{x}</div>)}</div></article><article className="rounded-2xl border bg-white p-5 shadow-sm"><h2 className="font-bold">Campaign lifecycle</h2><p className="mt-1 text-xs text-slate-500">Mock controls for later server-side implementation.</p><div className="mt-4 grid gap-3 sm:grid-cols-2">{[["Availability","Device, region and age rules"],["Progress window","Provider-defined expiry"],["Reward state","Pending → verified → credited"],["Fraud control","Device + velocity + event checks"]].map(x=><div key={x[0]} className="rounded-xl border p-3"><b className="text-xs">{x[0]}</b><p className="mt-1 text-[10px] text-slate-500">{x[1]}</p></div>)}</div></article></section>
+    {selected&&<div className="fixed inset-0 z-[80] flex justify-end"><button aria-label="Close provider details" onClick={()=>setSelected(null)} className="absolute inset-0 bg-slate-950/40"/><aside role="dialog" aria-modal="true" className="relative h-full w-full max-w-[560px] overflow-y-auto bg-[#f7f8fc] p-5 shadow-2xl"><div className="flex items-center"><div><p className="text-xs text-slate-400">Game provider</p><h2 className="text-lg font-bold">{selected.name}</h2></div><button onClick={()=>setSelected(null)} className="ml-auto grid h-10 w-10 place-items-center"><X/></button></div><section className="mt-5 rounded-2xl border bg-white p-5"><h3 className="font-bold">Connection &amp; milestone mapping</h3><div className="mt-4 grid gap-3 sm:grid-cols-2">{[["Integration",selected.model],["Priority",`#${selected.priority}`],["Postback","Signed event placeholder"],["Player match","Click ID + provider player ID"]].map(x=><div key={x[0]} className="rounded-xl bg-slate-50 p-3"><p className="text-[10px] text-slate-400">{x[0]}</p><b className="text-xs">{x[1]}</b></div>)}</div><button onClick={()=>action("Mock game-provider configuration opened")} className="mt-4 h-10 rounded-xl border border-violet-200 px-4 text-xs font-bold text-violet-700">Edit configuration</button></section><section className="mt-4 rounded-2xl border bg-white p-5"><h3 className="font-bold">Guarded actions</h3><div className="mt-4 flex flex-wrap gap-2">{selected.status!=="Paused"&&<button onClick={()=>setDecision("pause")} className="h-10 rounded-xl border border-amber-200 px-4 text-xs font-bold text-amber-700">Pause</button>}{selected.status!=="Active"&&<button onClick={()=>setDecision("activate")} className="h-10 rounded-xl bg-violet-600 px-4 text-xs font-bold text-white">Activate</button>}<button onClick={()=>setDecision("remove")} className="h-10 rounded-xl border border-rose-200 px-4 text-xs font-bold text-rose-700">Remove</button></div></section></aside></div>}
+    {addOpen&&<div className="fixed inset-0 z-[90] grid place-items-center bg-slate-950/50 p-4"><div role="dialog" aria-modal="true" className="w-full max-w-md rounded-2xl bg-white p-6"><h3 className="text-lg font-bold">Add game provider</h3><p className="mt-1 text-xs text-slate-500">Create a flexible inactive draft for any current or future provider.</p><label className="mt-5 block text-xs font-bold">Provider name<input autoFocus value={providerName} onChange={e=>setProviderName(e.target.value)} className="mt-2 h-11 w-full rounded-xl border px-3 font-normal outline-none" placeholder="Provider name"/></label><label className="mt-4 block text-xs font-bold">Integration type<select value={model} onChange={e=>setModel(e.target.value as GameProvider["model"])} className="mt-2 h-11 w-full rounded-xl border bg-white px-3 font-normal"><option>API</option><option>SDK</option><option>Offerwall</option></select></label><div className="mt-4 rounded-xl bg-violet-50 p-3 text-[11px] text-violet-800">The provider stays Draft until credentials, player attribution, milestone postbacks, expiry and reward rules are tested.</div><div className="mt-6 flex justify-end gap-2"><button onClick={()=>setAddOpen(false)} className="h-10 rounded-xl border px-4 text-xs font-bold">Cancel</button><button disabled={!providerName.trim()} onClick={addProvider} className="h-10 rounded-xl bg-violet-600 px-4 text-xs font-bold text-white disabled:opacity-40">Create draft</button></div></div></div>}
     {decision&&selected&&<div className="fixed inset-0 z-[100] grid place-items-center bg-slate-950/55 p-4"><div role="alertdialog" aria-modal="true" className="w-full max-w-md rounded-2xl bg-white p-6"><h3 className="text-lg font-bold capitalize">Confirm {decision}</h3><p className="mt-2 text-xs text-slate-500">This mock action affects {selected.name} and requires an audit reason.</p><textarea value={reason} onChange={e=>setReason(e.target.value)} placeholder="Required reason" className="mt-4 h-24 w-full rounded-xl border p-3 text-xs"/><div className="mt-5 flex justify-end gap-2"><button onClick={()=>{setDecision(null);setReason("")}} className="h-10 rounded-xl border px-4 text-xs font-bold">Cancel</button><button disabled={!reason.trim()} onClick={confirm} className={`h-10 rounded-xl px-4 text-xs font-bold text-white disabled:opacity-40 ${decision==="remove"?"bg-rose-600":"bg-violet-600"}`}>Confirm</button></div></div></div>}
   </>;
 }
@@ -2783,6 +2588,8 @@ export default function AdminDashboardPage() {
               <SurveysManagement action={action} />
             ) : activeView === "App Install Offers" ? (
               <AppInstallOffersManagement action={action} />
+            ) : activeView === "Games" ? (
+              <GamesManagement action={action} />
             ) : (
               <>
                 <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
