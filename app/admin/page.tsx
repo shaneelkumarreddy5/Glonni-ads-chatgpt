@@ -42,6 +42,25 @@ const adminViewSlugs: Record<AdminView, string> = {
 };
 
 const adminSlugViews = Object.fromEntries(Object.entries(adminViewSlugs).map(([view, slug]) => [slug, view])) as Record<string, AdminView>;
+
+type BulkQueueAction = { label: string; permission: string; tone?: "default" | "danger" };
+
+function BulkQueueToolbar({ selectedCount, visibleCount, allSelected, onToggleAll, onClear, actions, onApply }: { selectedCount: number; visibleCount: number; allSelected: boolean; onToggleAll: () => void; onClear: () => void; actions: BulkQueueAction[]; onApply: (label: string, reason: string) => void }) {
+  const [pending, setPending] = useState<BulkQueueAction | null>(null);
+  const [reason, setReason] = useState("");
+  return <>
+    <div className="flex flex-col gap-3 border-b border-violet-100 bg-violet-50/70 px-4 py-3 sm:flex-row sm:items-center">
+      <label className="flex items-center gap-2 text-xs font-bold text-violet-900"><input type="checkbox" checked={allSelected} onChange={onToggleAll} className="h-4 w-4 rounded border-violet-300 text-violet-600"/><span>{selectedCount ? `${selectedCount} selected` : `Select all ${visibleCount} visible`}</span></label>
+      {selectedCount > 0 && <div className="flex flex-1 flex-wrap items-center gap-2 sm:justify-end">{actions.map((item) => <button key={item.label} onClick={() => setPending(item)} className={`h-9 rounded-lg px-3 text-[11px] font-bold ${item.tone === "danger" ? "border border-rose-200 bg-white text-rose-700" : "border border-violet-200 bg-white text-violet-700"}`}>{item.label}</button>)}<button onClick={onClear} className="h-9 px-2 text-[11px] font-bold text-slate-500">Clear</button></div>}
+    </div>
+    {pending && <div className="fixed inset-0 z-[120] grid place-items-center bg-slate-950/55 p-4"><div role="alertdialog" aria-modal="true" aria-labelledby="bulk-action-title" className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl"><p className="text-[10px] font-bold uppercase tracking-wider text-violet-600">Permission: {pending.permission}</p><h3 id="bulk-action-title" className="mt-2 text-lg font-bold">{pending.label} for {selectedCount} records?</h3><p className="mt-2 text-xs leading-5 text-slate-500">This is a simulated bulk operation. Production will re-check every selected record, your role permission and any four-eye approval rule before changing data.</p><textarea autoFocus value={reason} onChange={(event) => setReason(event.target.value)} placeholder="Required audit reason" className="mt-4 min-h-24 w-full rounded-xl border p-3 text-xs outline-none focus:border-violet-400"/><div className="mt-5 flex justify-end gap-2"><button onClick={() => { setPending(null); setReason(""); }} className="h-10 rounded-xl border px-4 text-xs font-bold">Cancel</button><button disabled={!reason.trim()} onClick={() => { onApply(pending.label, reason); setPending(null); setReason(""); }} className={`h-10 rounded-xl px-4 text-xs font-bold text-white disabled:opacity-40 ${pending.tone === "danger" ? "bg-rose-600" : "bg-violet-600"}`}>Confirm mock action</button></div></div></div>}
+  </>;
+}
+
+function QueueDisplayControls({ compact, onCompact, columns, visibleColumns, onToggleColumn }: { compact: boolean; onCompact: () => void; columns: string[]; visibleColumns: string[]; onToggleColumn: (column: string) => void }) {
+  const [open, setOpen] = useState(false);
+  return <div className="relative flex items-center gap-2"><button onClick={onCompact} className={`hidden h-10 items-center gap-2 rounded-xl border px-3 text-[11px] font-bold md:flex ${compact ? "border-violet-300 bg-violet-50 text-violet-700" : "bg-white text-slate-600"}`}><SlidersHorizontal size={14}/>{compact ? "Compact rows" : "Comfortable rows"}</button><button onClick={() => setOpen((value) => !value)} className="hidden h-10 items-center gap-2 rounded-xl border bg-white px-3 text-[11px] font-bold text-slate-600 md:flex"><MoreHorizontal size={15}/>Columns</button>{open && <div className="absolute right-0 top-12 z-30 w-56 rounded-xl border bg-white p-3 shadow-xl"><p className="px-2 pb-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">Visible columns</p>{columns.map((column) => <label key={column} className="flex h-9 items-center gap-2 rounded-lg px-2 text-xs hover:bg-slate-50"><input type="checkbox" checked={visibleColumns.includes(column)} onChange={() => onToggleColumn(column)} className="h-4 w-4 rounded"/>{column}</label>)}</div>}<span className="rounded-lg bg-slate-100 px-2 py-1 text-[10px] font-bold text-slate-500 md:hidden">Mobile cards</span></div>;
+}
 const adminViews = Object.keys(adminViewSlugs) as AdminView[];
 
 function tone(value: string) {
@@ -1373,6 +1392,10 @@ function WithdrawalsManagement({ action }: { action: (message: string) => void }
   const [decision, setDecision] = useState<"approve" | "reject" | "retry" | null>(null);
   const [reason, setReason] = useState("");
   const [reconcile, setReconcile] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [compact, setCompact] = useState(false);
+  const withdrawalColumns = ["Method", "Amount", "Risk", "Status", "Age"];
+  const [visibleColumns, setVisibleColumns] = useState(withdrawalColumns);
   const filtered = useMemo(() => withdrawalData.filter((w) => (status === "All" || w.status === status) && (!query || `${w.id} ${w.user} ${w.userId} ${w.destination}`.toLowerCase().includes(query.toLowerCase()))), [status, query]);
   const tone = (s: string) => (s === "Approved" ? "bg-emerald-50 text-emerald-700" : s === "Processing" ? "bg-blue-50 text-blue-700" : s === "Failed" ? "bg-rose-50 text-rose-700" : s === "Rejected" ? "bg-slate-100 text-slate-600" : "bg-amber-50 text-amber-700");
   const confirmDecision = () => {
@@ -1385,6 +1408,10 @@ function WithdrawalsManagement({ action }: { action: (message: string) => void }
     setReason("");
     setSelected(null);
   };
+  const toggleWithdrawal = (id: string) => setSelectedIds((ids) => ids.includes(id) ? ids.filter((item) => item !== id) : [...ids, id]);
+  const toggleAllWithdrawals = () => setSelectedIds((ids) => filtered.length > 0 && filtered.every((item) => ids.includes(item.id)) ? ids.filter((id) => !filtered.some((item) => item.id === id)) : Array.from(new Set([...ids, ...filtered.map((item) => item.id)])));
+  const toggleWithdrawalColumn = (column: string) => setVisibleColumns((columns) => columns.includes(column) ? columns.length === 1 ? columns : columns.filter((item) => item !== column) : [...columns, column]);
+  const applyBulkWithdrawal = (label: string, reasonText: string) => { action(`${label} simulated for ${selectedIds.length} withdrawals · audit reason captured`); setSelectedIds([]); void reasonText; };
   return (
     <>
       <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
@@ -1439,45 +1466,49 @@ function WithdrawalsManagement({ action }: { action: (message: string) => void }
               </button>
             ))}
           </div>
+          <QueueDisplayControls compact={compact} onCompact={() => setCompact((value) => !value)} columns={withdrawalColumns} visibleColumns={visibleColumns} onToggleColumn={toggleWithdrawalColumn}/>
         </div>
-        <div className="overflow-x-auto">
+        <BulkQueueToolbar selectedCount={selectedIds.length} visibleCount={filtered.length} allSelected={filtered.length > 0 && filtered.every((item) => selectedIds.includes(item.id))} onToggleAll={toggleAllWithdrawals} onClear={() => setSelectedIds([])} actions={[{label:"Assign finance reviewer",permission:"withdrawals.assign"},{label:"Approve eligible",permission:"withdrawals.bulk_approve"},{label:"Place on hold",permission:"withdrawals.hold",tone:"danger"}]} onApply={applyBulkWithdrawal}/>
+        <div className="hidden overflow-x-auto md:block">
           <table className="w-full min-w-[1050px] text-left">
             <thead>
               <tr className="border-b bg-[#fafafd] text-[10px] uppercase tracking-wider text-slate-400">
+                <th className="sticky left-0 z-10 w-12 bg-[#fafafd] px-4 py-3"><input aria-label="Select all visible withdrawals" type="checkbox" checked={filtered.length > 0 && filtered.every((item) => selectedIds.includes(item.id))} onChange={toggleAllWithdrawals} className="h-4 w-4 rounded"/></th>
                 <th className="px-5 py-3">Request</th>
                 <th className="px-4 py-3">User</th>
-                <th className="px-4 py-3">Method</th>
-                <th className="px-4 py-3">Amount</th>
-                <th className="px-4 py-3">Risk</th>
-                <th className="px-4 py-3">Status</th>
-                <th className="px-4 py-3">Age</th>
+                {visibleColumns.includes("Method") && <th className="px-4 py-3">Method</th>}
+                {visibleColumns.includes("Amount") && <th className="px-4 py-3">Amount</th>}
+                {visibleColumns.includes("Risk") && <th className="px-4 py-3">Risk</th>}
+                {visibleColumns.includes("Status") && <th className="px-4 py-3">Status</th>}
+                {visibleColumns.includes("Age") && <th className="px-4 py-3">Age</th>}
                 <th className="px-5 py-3 text-right">Action</th>
               </tr>
             </thead>
             <tbody>
               {filtered.map((w) => (
-                <tr key={w.id} className="border-b border-slate-50 text-xs hover:bg-violet-50/30">
-                  <td className="px-5 py-4 font-mono text-[11px] font-semibold text-violet-600">
+                <tr key={w.id} className={`border-b border-slate-50 text-xs hover:bg-violet-50/30 ${selectedIds.includes(w.id) ? "bg-violet-50/60" : ""}`}>
+                  <td className={`sticky left-0 z-10 bg-white px-4 ${compact ? "py-2" : "py-4"}`}><input aria-label={`Select withdrawal ${w.id}`} type="checkbox" checked={selectedIds.includes(w.id)} onChange={() => toggleWithdrawal(w.id)} className="h-4 w-4 rounded"/></td>
+                  <td className={`px-5 font-mono text-[11px] font-semibold text-violet-600 ${compact ? "py-2" : "py-4"}`}>
                     {w.id}
                     <p className="mt-1 font-sans text-[9px] font-normal text-slate-400">{w.requested}</p>
                   </td>
-                  <td className="px-4 py-4 font-semibold">
+                  <td className={`px-4 font-semibold ${compact ? "py-2" : "py-4"}`}>
                     {w.user}
                     <p className="mt-1 text-[10px] font-normal text-slate-400">{w.userId}</p>
                   </td>
-                  <td className="px-4 py-4 font-semibold">
+                  {visibleColumns.includes("Method") && <td className={`px-4 font-semibold ${compact ? "py-2" : "py-4"}`}>
                     {w.method}
                     <p className="mt-1 text-[10px] font-normal text-slate-400">{w.destination}</p>
-                  </td>
-                  <td className="px-4 py-4 text-sm font-bold">₹{w.amount.toFixed(2)}</td>
-                  <td className="px-4 py-4">
+                  </td>}
+                  {visibleColumns.includes("Amount") && <td className={`px-4 text-sm font-bold ${compact ? "py-2" : "py-4"}`}>₹{w.amount.toFixed(2)}</td>}
+                  {visibleColumns.includes("Risk") && <td className={`px-4 ${compact ? "py-2" : "py-4"}`}>
                     <span className={`rounded-full px-2.5 py-1 text-[10px] font-semibold ${w.risk === "High" ? "bg-rose-50 text-rose-700" : w.risk === "Medium" ? "bg-amber-50 text-amber-700" : "bg-emerald-50 text-emerald-700"}`}>{w.risk}</span>
-                  </td>
-                  <td className="px-4 py-4">
+                  </td>}
+                  {visibleColumns.includes("Status") && <td className={`px-4 ${compact ? "py-2" : "py-4"}`}>
                     <span className={`rounded-full px-2.5 py-1 text-[10px] font-semibold ${tone(w.status)}`}>{w.status}</span>
-                  </td>
-                  <td className="px-4 py-4 text-slate-500">{w.age}</td>
-                  <td className="px-5 py-4 text-right">
+                  </td>}
+                  {visibleColumns.includes("Age") && <td className={`px-4 text-slate-500 ${compact ? "py-2" : "py-4"}`}>{w.age}</td>}
+                  <td className={`px-5 text-right ${compact ? "py-2" : "py-4"}`}>
                     <button onClick={() => setSelected(w)} className="inline-flex h-9 items-center gap-2 rounded-lg border border-slate-200 px-3 font-semibold text-violet-600">
                       <Eye size={14} />
                       Review
@@ -1495,6 +1526,7 @@ function WithdrawalsManagement({ action }: { action: (message: string) => void }
             </div>
           )}
         </div>
+        <div className="grid gap-3 p-4 md:hidden">{filtered.map((w) => <article key={w.id} className={`rounded-xl border p-4 ${selectedIds.includes(w.id) ? "border-violet-300 bg-violet-50/50" : "bg-white"}`}><div className="flex items-start gap-3"><input aria-label={`Select withdrawal ${w.id}`} type="checkbox" checked={selectedIds.includes(w.id)} onChange={() => toggleWithdrawal(w.id)} className="mt-1 h-5 w-5 rounded"/><div className="min-w-0 flex-1"><div className="flex items-start justify-between gap-2"><div><p className="font-mono text-[10px] font-bold text-violet-600">{w.id}</p><h3 className="mt-1 text-sm font-bold">{w.user}</h3><p className="text-[10px] text-slate-400">{w.userId} · {w.age}</p></div><b className="text-sm">₹{w.amount.toFixed(2)}</b></div><div className="mt-3 flex flex-wrap gap-2"><span className={`rounded-full px-2 py-1 text-[9px] font-bold ${tone(w.status)}`}>{w.status}</span><span className={`rounded-full px-2 py-1 text-[9px] font-bold ${w.risk === "High" ? "bg-rose-50 text-rose-700" : w.risk === "Medium" ? "bg-amber-50 text-amber-700" : "bg-emerald-50 text-emerald-700"}`}>{w.risk} risk</span><span className="rounded-full bg-slate-100 px-2 py-1 text-[9px] font-bold text-slate-600">{w.method}</span></div><button onClick={() => setSelected(w)} className="mt-4 flex h-10 w-full items-center justify-center gap-2 rounded-xl border bg-white text-xs font-bold text-violet-700"><Eye size={14}/>Review request</button></div></div></article>)}</div>
         <div className="flex items-center justify-between border-t px-5 py-4 text-xs text-slate-500">
           <span>Showing {filtered.length} mock requests</span>
           <span>Last provider sync: 2 min ago</span>
@@ -1765,6 +1797,10 @@ function KycVerification({ action }: { action: (message: string) => void }) {
   const [selected, setSelected] = useState<KycCase | null>(null);
   const [decision, setDecision] = useState<"approve" | "reject" | "changes" | null>(null);
   const [reason, setReason] = useState("");
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [compact, setCompact] = useState(false);
+  const kycColumns = ["Submitted", "Documents", "Name match", "Risk", "Status"];
+  const [visibleColumns, setVisibleColumns] = useState(kycColumns);
   const rows = useMemo(() => kycCases.filter((k) => (status === "All statuses" || k.status === status) && (!query || `${k.user} ${k.userId} ${k.id}`.toLowerCase().includes(query.toLowerCase()))), [query, status]);
   const tone = (s: string) => (s === "Approved" ? "bg-emerald-50 text-emerald-700" : s === "Rejected" ? "bg-rose-50 text-rose-700" : s === "Changes requested" ? "bg-blue-50 text-blue-700" : "bg-amber-50 text-amber-700");
   const complete = () => {
@@ -1775,6 +1811,10 @@ function KycVerification({ action }: { action: (message: string) => void }) {
     setReason("");
     setSelected(null);
   };
+  const toggleKyc = (id: string) => setSelectedIds((ids) => ids.includes(id) ? ids.filter((item) => item !== id) : [...ids, id]);
+  const toggleAllKyc = () => setSelectedIds((ids) => rows.length > 0 && rows.every((item) => ids.includes(item.id)) ? ids.filter((id) => !rows.some((item) => item.id === id)) : Array.from(new Set([...ids, ...rows.map((item) => item.id)])));
+  const toggleKycColumn = (column: string) => setVisibleColumns((columns) => columns.includes(column) ? columns.length === 1 ? columns : columns.filter((item) => item !== column) : [...columns, column]);
+  const applyBulkKyc = (label: string, reasonText: string) => { action(`${label} simulated for ${selectedIds.length} KYC cases · audit reason captured`); setSelectedIds([]); void reasonText; };
   return (
     <>
       <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
@@ -1825,24 +1865,28 @@ function KycVerification({ action }: { action: (message: string) => void }) {
             <option>Approved</option>
             <option>Rejected</option>
           </select>
+          <QueueDisplayControls compact={compact} onCompact={() => setCompact((value) => !value)} columns={kycColumns} visibleColumns={visibleColumns} onToggleColumn={toggleKycColumn}/>
         </div>
-        <div className="overflow-x-auto">
+        <BulkQueueToolbar selectedCount={selectedIds.length} visibleCount={rows.length} allSelected={rows.length > 0 && rows.every((item) => selectedIds.includes(item.id))} onToggleAll={toggleAllKyc} onClear={() => setSelectedIds([])} actions={[{label:"Assign reviewer",permission:"kyc.assign"},{label:"Request document refresh",permission:"kyc.request_changes"},{label:"Escalate high risk",permission:"kyc.escalate",tone:"danger"}]} onApply={applyBulkKyc}/>
+        <div className="hidden overflow-x-auto md:block">
           <table className="w-full min-w-[900px] text-left">
             <thead>
               <tr className="bg-[#fafafd] text-[10px] uppercase tracking-wider text-slate-400">
+                <th className="sticky left-0 z-10 w-12 bg-[#fafafd] px-4 py-3"><input aria-label="Select all visible KYC cases" type="checkbox" checked={rows.length > 0 && rows.every((item) => selectedIds.includes(item.id))} onChange={toggleAllKyc} className="h-4 w-4 rounded"/></th>
                 <th className="px-5 py-3">Applicant</th>
-                <th className="px-4 py-3">Submitted</th>
-                <th className="px-4 py-3">Documents</th>
-                <th className="px-4 py-3">Name match</th>
-                <th className="px-4 py-3">Risk</th>
-                <th className="px-4 py-3">Status</th>
+                {visibleColumns.includes("Submitted") && <th className="px-4 py-3">Submitted</th>}
+                {visibleColumns.includes("Documents") && <th className="px-4 py-3">Documents</th>}
+                {visibleColumns.includes("Name match") && <th className="px-4 py-3">Name match</th>}
+                {visibleColumns.includes("Risk") && <th className="px-4 py-3">Risk</th>}
+                {visibleColumns.includes("Status") && <th className="px-4 py-3">Status</th>}
                 <th className="px-5 py-3 text-right">Action</th>
               </tr>
             </thead>
             <tbody>
               {rows.map((k) => (
-                <tr key={k.id} className="border-t border-slate-100 text-xs hover:bg-violet-50/30">
-                  <td className="px-5 py-4">
+                <tr key={k.id} className={`border-t border-slate-100 text-xs hover:bg-violet-50/30 ${selectedIds.includes(k.id) ? "bg-violet-50/60" : ""}`}>
+                  <td className={`sticky left-0 z-10 bg-white px-4 ${compact ? "py-2" : "py-4"}`}><input aria-label={`Select KYC case ${k.id}`} type="checkbox" checked={selectedIds.includes(k.id)} onChange={() => toggleKyc(k.id)} className="h-4 w-4 rounded"/></td>
+                  <td className={`px-5 ${compact ? "py-2" : "py-4"}`}>
                     <div className="flex items-center gap-3">
                       <span className="grid h-10 w-10 place-items-center rounded-full bg-violet-100 font-bold text-violet-700">{k.initials}</span>
                       <div>
@@ -1853,21 +1897,21 @@ function KycVerification({ action }: { action: (message: string) => void }) {
                       </div>
                     </div>
                   </td>
-                  <td className="px-4 py-4 text-slate-500">{k.submitted}</td>
-                  <td className="px-4 py-4">
+                  {visibleColumns.includes("Submitted") && <td className={`px-4 text-slate-500 ${compact ? "py-2" : "py-4"}`}>{k.submitted}</td>}
+                  {visibleColumns.includes("Documents") && <td className={`px-4 ${compact ? "py-2" : "py-4"}`}>
                     <b>{k.type}</b>
                     <p className="text-[10px] text-emerald-600">2 files received</p>
-                  </td>
-                  <td className="px-4 py-4">
+                  </td>}
+                  {visibleColumns.includes("Name match") && <td className={`px-4 ${compact ? "py-2" : "py-4"}`}>
                     <b className={k.nameMatch < 80 ? "text-rose-600" : "text-emerald-600"}>{k.nameMatch}%</b>
-                  </td>
-                  <td className="px-4 py-4">
+                  </td>}
+                  {visibleColumns.includes("Risk") && <td className={`px-4 ${compact ? "py-2" : "py-4"}`}>
                     <span className={k.risk === "High" ? "text-rose-600" : k.risk === "Medium" ? "text-amber-600" : "text-emerald-600"}>{k.risk}</span>
-                  </td>
-                  <td className="px-4 py-4">
+                  </td>}
+                  {visibleColumns.includes("Status") && <td className={`px-4 ${compact ? "py-2" : "py-4"}`}>
                     <span className={`rounded-full px-2.5 py-1 text-[10px] font-semibold ${tone(k.status)}`}>{k.status}</span>
-                  </td>
-                  <td className="px-5 py-4 text-right">
+                  </td>}
+                  <td className={`px-5 text-right ${compact ? "py-2" : "py-4"}`}>
                     <button onClick={() => setSelected(k)} className="inline-flex h-9 items-center gap-2 rounded-lg border border-slate-200 px-3 font-semibold text-violet-600">
                       <Eye size={14} />
                       Review
@@ -1878,6 +1922,7 @@ function KycVerification({ action }: { action: (message: string) => void }) {
             </tbody>
           </table>
         </div>
+        <div className="grid gap-3 p-4 md:hidden">{rows.map((k) => <article key={k.id} className={`rounded-xl border p-4 ${selectedIds.includes(k.id) ? "border-violet-300 bg-violet-50/50" : "bg-white"}`}><div className="flex items-start gap-3"><input aria-label={`Select KYC case ${k.id}`} type="checkbox" checked={selectedIds.includes(k.id)} onChange={() => toggleKyc(k.id)} className="mt-1 h-5 w-5 rounded"/><div className="min-w-0 flex-1"><div className="flex items-start gap-3"><span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-violet-100 text-xs font-bold text-violet-700">{k.initials}</span><div><h3 className="text-sm font-bold">{k.user}</h3><p className="font-mono text-[10px] text-violet-600">{k.id}</p><p className="text-[10px] text-slate-400">{k.userId} · {k.submitted}</p></div></div><div className="mt-3 grid grid-cols-2 gap-2 text-[10px]"><div className="rounded-lg bg-slate-50 p-2"><span className="text-slate-400">Name match</span><b className={`block ${k.nameMatch < 80 ? "text-rose-600" : "text-emerald-600"}`}>{k.nameMatch}%</b></div><div className="rounded-lg bg-slate-50 p-2"><span className="text-slate-400">Risk</span><b className="block">{k.risk}</b></div></div><div className="mt-3 flex items-center justify-between"><span className={`rounded-full px-2 py-1 text-[9px] font-bold ${tone(k.status)}`}>{k.status}</span><button onClick={() => setSelected(k)} className="flex h-9 items-center gap-2 rounded-lg border bg-white px-3 text-[11px] font-bold text-violet-700"><Eye size={14}/>Review</button></div></div></div></article>)}</div>
         <div className="border-t border-slate-100 px-5 py-4 text-xs text-slate-500">Showing {rows.length} mock applications · Documents are masked and synthetic</div>
       </section>
       <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
