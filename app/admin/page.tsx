@@ -1,7 +1,7 @@
 "use client";
 /* eslint-disable @typescript-eslint/no-unused-vars -- compact mock document cards retain map indices for future ordering */
 
-import { Activity, ArrowDownRight, ArrowUpRight, BadgeIndianRupee, Bell, Bot, CalendarDays, CheckCircle2, ChevronDown, CircleAlert, Clock3, Download, FileText, Gamepad2, Gift, HandCoins, Headphones, LayoutDashboard, Menu, MonitorPlay, Moon, MoreHorizontal, PackageCheck, PanelLeftClose, Plus, RefreshCw, Search, Send, Settings, ShieldAlert, ShieldCheck, ShoppingBag, SlidersHorizontal, Sparkles, Store, TrendingUp, UserCheck, Users, WalletCards, X, Ban, ChevronLeft, ChevronRight, Copy, Eye, Filter, Mail, MapPin, Phone, RotateCcw, Smartphone, UserRound, UserX, Wifi } from "lucide-react";
+import { Activity, ArrowDownRight, ArrowUpRight, BadgeIndianRupee, Bell, Bot, CalendarDays, CheckCircle2, ChevronDown, CircleAlert, Clock3, Download, FileText, Gamepad2, Gift, HandCoins, Headphones, LayoutDashboard, LockKeyhole, LogOut, Menu, MonitorPlay, Moon, MoreHorizontal, PackageCheck, PanelLeftClose, Pin, PinOff, Plus, RefreshCw, Search, Send, Settings, ShieldAlert, ShieldCheck, ShoppingBag, SlidersHorizontal, Sparkles, Store, TrendingUp, UserCheck, Users, WalletCards, X, Ban, ChevronLeft, ChevronRight, Copy, Eye, Filter, Mail, MapPin, Phone, RotateCcw, Smartphone, UserRound, UserX, Wifi } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 type NavItem = { label: string; icon: typeof LayoutDashboard; badge?: string };
@@ -2821,12 +2821,26 @@ export default function AdminDashboardPage() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const [noticeOpen, setNoticeOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [locked, setLocked] = useState(false);
+  const [signOutOpen, setSignOutOpen] = useState(false);
+  const [readNotifications, setReadNotifications] = useState<string[]>([]);
+  const [pinnedViews, setPinnedViews] = useState<AdminView[]>(["Withdrawals", "KYC Verification", "Support Centre"]);
+  const [recentViews, setRecentViews] = useState<AdminView[]>([]);
   const [range, setRange] = useState<keyof typeof chartSets>("30 days");
   const [transactionFilter, setTransactionFilter] = useState("All");
   const [toast, setToast] = useState("");
   const [commandOpen, setCommandOpen] = useState(false);
   const [commandQuery, setCommandQuery] = useState("");
   const commandInputRef = useRef<HTMLInputElement>(null);
+  const notifications: { id: string; title: string; detail: string; view: AdminView; urgent?: boolean }[] = [
+    { id: "withdrawals", title: "8 withdrawals await approval", detail: "₹74,260 requested", view: "Withdrawals" },
+    { id: "kyc", title: "12 KYC profiles need review", detail: "Oldest request is 9 hours old", view: "KYC Verification" },
+    { id: "risk", title: "Unusual activity detected on 3 devices", detail: "High-risk signals require review", view: "Fraud & Risk", urgent: true },
+    { id: "support", title: "5 support tickets are open", detail: "2 are beyond response target", view: "Support Centre" },
+    { id: "reports", title: "Reconciliation period needs attention", detail: "2 exceptions remain unmatched", view: "Reports" },
+  ];
+  const unreadCount = notifications.filter((notification) => !readNotifications.includes(notification.id)).length;
   const filteredTransactions = useMemo(() => (transactionFilter === "All" ? transactions : transactions.filter((t) => t.status === transactionFilter)), [transactionFilter]);
   const commandResults = useMemo(() => {
     const query = commandQuery.trim().toLowerCase();
@@ -2835,6 +2849,20 @@ export default function AdminDashboardPage() {
   const action = (message: string) => {
     setToast(message);
     window.setTimeout(() => setToast(""), 2400);
+  };
+
+  const rememberView = useCallback((view: AdminView) => {
+    setRecentViews((current) => [view, ...current.filter((item) => item !== view)].slice(0, 5));
+  }, []);
+
+  const togglePinnedView = (view: AdminView) => {
+    const isPinned = pinnedViews.includes(view);
+    setPinnedViews((current) => {
+      const next = isPinned ? current.filter((item) => item !== view) : [...current, view];
+      window.localStorage.setItem("glonni-admin-pinned-views", JSON.stringify(next));
+      return next;
+    });
+    action(isPinned ? `${view} removed from pinned sections` : `${view} pinned to your workspace`);
   };
 
   const syncHistoryControls = useCallback(() => {
@@ -2853,12 +2881,13 @@ export default function AdminDashboardPage() {
     window.history[replace ? "replaceState" : "pushState"]({ ...window.history.state, adminView: view, adminPosition: nextPosition }, "", url);
     window.sessionStorage.setItem("glonni-admin-history-length", String(nextLength));
     setActiveView(view);
+    rememberView(view);
     setHistoryPosition(nextPosition);
     setHistoryLength(nextLength);
     setMenuOpen(false);
     setNoticeOpen(false);
     window.scrollTo({ top: 0, behavior: "smooth" });
-  }, []);
+  }, [rememberView]);
 
   const goBack = useCallback(() => {
     const position = Number(window.history.state?.adminPosition ?? 0);
@@ -2876,18 +2905,33 @@ export default function AdminDashboardPage() {
     initialUrl.searchParams.set("section", adminViewSlugs[initialView]);
     window.history.replaceState({ ...window.history.state, adminView: initialView, adminPosition: initialPosition }, "", initialUrl);
     setActiveView(initialView);
+    rememberView(initialView);
     syncHistoryControls();
 
     const handlePopState = () => {
-      setActiveView(getAdminViewFromUrl());
+      const nextView = getAdminViewFromUrl();
+      setActiveView(nextView);
+      rememberView(nextView);
       setMenuOpen(false);
       setNoticeOpen(false);
+      setProfileOpen(false);
       syncHistoryControls();
       window.scrollTo({ top: 0, behavior: "auto" });
     };
     window.addEventListener("popstate", handlePopState);
     return () => window.removeEventListener("popstate", handlePopState);
-  }, [syncHistoryControls]);
+  }, [rememberView, syncHistoryControls]);
+
+  useEffect(() => {
+    const storedPins = window.localStorage.getItem("glonni-admin-pinned-views");
+    if (!storedPins) return;
+    try {
+      const parsed = JSON.parse(storedPins) as AdminView[];
+      setPinnedViews(parsed.filter((view) => adminViews.includes(view)));
+    } catch {
+      window.localStorage.removeItem("glonni-admin-pinned-views");
+    }
+  }, []);
 
   useEffect(() => {
     const handleKeyboard = (event: KeyboardEvent) => {
@@ -2900,6 +2944,7 @@ export default function AdminDashboardPage() {
         setCommandQuery("");
         setMenuOpen(false);
         setNoticeOpen(false);
+        setProfileOpen(false);
       }
     };
     window.addEventListener("keydown", handleKeyboard);
@@ -2920,6 +2965,26 @@ export default function AdminDashboardPage() {
         </div>
       )}
       {menuOpen && <button aria-label="Close admin navigation" className="fixed inset-0 z-40 bg-slate-950/40 lg:hidden" onClick={() => setMenuOpen(false)} />}
+      {locked && (
+        <div className="fixed inset-0 z-[150] grid place-items-center bg-[#10172a] p-5 text-white">
+          <div className="w-full max-w-sm text-center">
+            <div className="mx-auto grid h-16 w-16 place-items-center rounded-2xl bg-violet-600"><LockKeyhole size={28} /></div>
+            <h2 className="mt-5 text-2xl font-bold">Admin console locked</h2>
+            <p className="mt-2 text-sm leading-6 text-slate-300">This mock lock hides the console on this device. Production unlock will require fresh authentication and MFA.</p>
+            <button autoFocus onClick={() => { setLocked(false); action("Mock console unlocked"); }} className="mt-6 h-11 w-full rounded-xl bg-white font-bold text-[#172033]">Unlock mock console</button>
+          </div>
+        </div>
+      )}
+      {signOutOpen && (
+        <div className="fixed inset-0 z-[140] grid place-items-center bg-slate-950/55 p-4">
+          <div role="alertdialog" aria-modal="true" aria-labelledby="sign-out-title" className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl">
+            <LogOut className="text-rose-600" />
+            <h2 id="sign-out-title" className="mt-3 text-lg font-bold">Sign out of admin?</h2>
+            <p className="mt-2 text-sm leading-6 text-slate-500">Authentication is not connected yet. Confirming will only simulate sign-out and lock this mock console.</p>
+            <div className="mt-5 flex gap-2"><button onClick={() => setSignOutOpen(false)} className="h-10 flex-1 rounded-xl border text-xs font-bold">Cancel</button><button onClick={() => { setSignOutOpen(false); setLocked(true); }} className="h-10 flex-1 rounded-xl bg-rose-600 text-xs font-bold text-white">Mock sign out</button></div>
+          </div>
+        </div>
+      )}
       {commandOpen && (
         <div className="fixed inset-0 z-[120] flex items-start justify-center bg-slate-950/55 p-4 pt-[12vh]" onMouseDown={() => { setCommandOpen(false); setCommandQuery(""); }}>
           <section role="dialog" aria-modal="true" aria-labelledby="admin-command-title" className="w-full max-w-xl overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl" onMouseDown={(event) => event.stopPropagation()}>
@@ -3038,30 +3103,32 @@ export default function AdminDashboardPage() {
             <kbd className="rounded border border-slate-200 bg-white px-2 py-1 text-[10px] text-slate-400">⌘ K</kbd>
           </button>
           <div className="ml-auto flex items-center gap-2">
-            <button aria-label="Toggle appearance" onClick={() => action("Admin dark theme is planned for Settings")} className="grid h-11 w-11 place-items-center rounded-xl text-slate-500 hover:bg-slate-100">
+            <button aria-label="Toggle appearance" onClick={() => action("Admin dark theme is planned for Settings")} className="hidden h-11 w-11 place-items-center rounded-xl text-slate-500 hover:bg-slate-100 sm:grid">
               <Moon size={19} />
             </button>
             <div className="relative">
-              <button aria-label="Notifications, 5 unread" className="relative grid h-11 w-11 place-items-center rounded-xl text-slate-500 hover:bg-slate-100" onClick={() => setNoticeOpen(!noticeOpen)}>
+              <button aria-label={`Notifications, ${unreadCount} unread`} className="relative grid h-11 w-11 place-items-center rounded-xl text-slate-500 hover:bg-slate-100" onClick={() => { setNoticeOpen(!noticeOpen); setProfileOpen(false); }}>
                 <Bell size={19} />
-                <span className="absolute right-1.5 top-1.5 grid h-5 min-w-5 place-items-center rounded-full bg-rose-500 px-1 text-[10px] font-bold text-white">5</span>
+                {unreadCount > 0 && <span className="absolute right-1.5 top-1.5 grid h-5 min-w-5 place-items-center rounded-full bg-rose-500 px-1 text-[10px] font-bold text-white">{unreadCount}</span>}
               </button>
               {noticeOpen && (
                 <div className="absolute right-0 top-14 w-80 rounded-2xl border border-slate-200 bg-white p-3 shadow-2xl">
                   <div className="flex items-center justify-between px-2 pb-2">
                     <p className="text-sm font-bold">Notifications</p>
-                    <span className="text-[10px] font-semibold text-violet-600">5 unread</span>
+                    <button onClick={() => setReadNotifications(notifications.map((notification) => notification.id))} className="text-[10px] font-semibold text-violet-600">Mark all read</button>
                   </div>
-                  {["8 withdrawals await approval", "12 KYC profiles need review", "Unusual activity detected on 3 devices"].map((n, i) => (
-                    <button key={n} onClick={() => action("Notification opened")} className="mb-1 flex w-full gap-3 rounded-xl p-3 text-left hover:bg-slate-50">
-                      <span className={`mt-1 h-2 w-2 shrink-0 rounded-full ${i === 2 ? "bg-rose-500" : "bg-violet-500"}`} />
-                      <span className="text-xs leading-5 text-slate-600">{n}</span>
+                  {notifications.map((notification) => (
+                    <button key={notification.id} onClick={() => { setReadNotifications((current) => current.includes(notification.id) ? current : [...current, notification.id]); navigateTo(notification.view); }} className={`mb-1 flex w-full gap-3 rounded-xl p-3 text-left hover:bg-slate-50 ${readNotifications.includes(notification.id) ? "opacity-60" : ""}`}>
+                      <span className={`mt-1 h-2 w-2 shrink-0 rounded-full ${readNotifications.includes(notification.id) ? "bg-slate-300" : notification.urgent ? "bg-rose-500" : "bg-violet-500"}`} />
+                      <span><b className="block text-xs leading-5 text-slate-700">{notification.title}</b><span className="block text-[10px] text-slate-400">{notification.detail} · Open {notification.view}</span></span>
                     </button>
                   ))}
+                  <div className="border-t px-2 pt-2 text-[10px] text-slate-400">{unreadCount} unread · Mock notifications</div>
                 </div>
               )}
             </div>
-            <div className="ml-1 hidden items-center gap-3 border-l border-slate-200 pl-4 sm:flex">
+            <div className="relative ml-1 block">
+            <button aria-label="Open admin profile menu" aria-expanded={profileOpen} onClick={() => { setProfileOpen(!profileOpen); setNoticeOpen(false); }} className="flex items-center gap-3 border-l border-slate-200 py-1 pl-2 text-left sm:pl-4">
               <div className="grid h-10 w-10 place-items-center rounded-full bg-gradient-to-br from-violet-500 to-indigo-700 text-xs font-bold text-white">SK</div>
               <div className="hidden xl:block">
                 <div className="text-sm font-semibold">Super Admin</div>
@@ -3071,12 +3138,21 @@ export default function AdminDashboardPage() {
                 </div>
               </div>
               <ChevronDown size={16} className="hidden text-slate-400 xl:block" />
+            </button>
+            {profileOpen && <div className="absolute right-0 top-14 w-64 rounded-2xl border bg-white p-2 shadow-2xl"><div className="border-b p-3"><p className="text-sm font-bold">Shaneel Kumarreddy</p><p className="text-[10px] text-slate-400">Super Admin · Mock session</p></div><button onClick={() => navigateTo("Settings & Security")} className="mt-2 flex h-10 w-full items-center gap-3 rounded-xl px-3 text-xs font-semibold hover:bg-slate-50"><UserRound size={16}/>Profile & session settings</button><button onClick={() => { setProfileOpen(false); setLocked(true); }} className="flex h-10 w-full items-center gap-3 rounded-xl px-3 text-xs font-semibold hover:bg-slate-50"><LockKeyhole size={16}/>Lock console</button><button onClick={() => { setProfileOpen(false); setSignOutOpen(true); }} className="flex h-10 w-full items-center gap-3 rounded-xl px-3 text-xs font-semibold text-rose-600 hover:bg-rose-50"><LogOut size={16}/>Mock sign out</button></div>}
             </div>
           </div>
         </header>
 
         <main id="admin-content" tabIndex={-1} className="px-4 py-6 md:px-7 md:py-7">
           <div className="mx-auto max-w-[1500px]">
+            <div className="mb-4 flex min-h-10 flex-wrap items-center gap-2 text-xs text-slate-400" aria-label="Breadcrumb">
+              <button onClick={() => navigateTo("Dashboard")} className="rounded-lg px-2 py-1 font-semibold text-violet-600 hover:bg-violet-50">Admin home</button>
+              {activeView !== "Dashboard" && <><ChevronRight size={14}/><span aria-current="page" className="font-medium text-slate-600">{activeView}</span></>}
+              <button onClick={() => togglePinnedView(activeView)} className="ml-auto flex h-9 items-center gap-2 rounded-xl border bg-white px-3 font-semibold text-slate-600 hover:border-violet-300" aria-label={pinnedViews.includes(activeView) ? `Unpin ${activeView}` : `Pin ${activeView}`}>
+                {pinnedViews.includes(activeView) ? <PinOff size={14}/> : <Pin size={14}/>}<span className="hidden sm:inline">{pinnedViews.includes(activeView) ? "Unpin" : "Pin section"}</span>
+              </button>
+            </div>
             {activeView === "Users" ? (
               <UsersManagement action={action} />
             ) : activeView === "Wallet & Transactions" ? (
@@ -3111,9 +3187,6 @@ export default function AdminDashboardPage() {
               <>
                 <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
                   <div>
-                    <div className="mb-2 text-xs text-slate-400">
-                      Home <span className="px-2">›</span> Dashboard
-                    </div>
                     <h1 className="text-2xl font-bold tracking-tight md:text-[28px]">Dashboard</h1>
                     <p className="mt-1 text-sm text-slate-500">Welcome back, Shaneel. Here is today&apos;s platform overview.</p>
                   </div>
@@ -3133,6 +3206,11 @@ export default function AdminDashboardPage() {
                     <span className="flex h-10 items-center rounded-xl bg-violet-50 px-3 text-xs font-semibold text-violet-700">Step 2 · Mock data</span>
                   </div>
                 </div>
+
+                <section aria-label="Personal admin workspace" className="mb-6 grid gap-4 lg:grid-cols-2">
+                  <article className="rounded-2xl border border-[#e7e9f1] bg-white p-5 shadow-sm"><div className="flex items-center"><div><h2 className="font-bold">Pinned sections</h2><p className="mt-1 text-xs text-slate-500">Keep frequent work one tap away</p></div><Pin size={17} className="ml-auto text-violet-600"/></div><div className="mt-4 flex flex-wrap gap-2">{pinnedViews.length ? pinnedViews.map((view) => <button key={view} onClick={() => navigateTo(view)} className="flex h-9 items-center gap-2 rounded-xl bg-violet-50 px-3 text-xs font-bold text-violet-700 hover:bg-violet-100">{view}<ChevronRight size={13}/></button>) : <p className="text-xs text-slate-400">Pin any section from its breadcrumb.</p>}</div></article>
+                  <article className="rounded-2xl border border-[#e7e9f1] bg-white p-5 shadow-sm"><div className="flex items-center"><div><h2 className="font-bold">Recently viewed</h2><p className="mt-1 text-xs text-slate-500">Return to your latest admin work</p></div><Clock3 size={17} className="ml-auto text-slate-400"/></div><div className="mt-4 flex flex-wrap gap-2">{recentViews.filter((view) => view !== "Dashboard").length ? recentViews.filter((view) => view !== "Dashboard").map((view) => <button key={view} onClick={() => navigateTo(view)} className="flex h-9 items-center gap-2 rounded-xl border px-3 text-xs font-semibold text-slate-600 hover:border-violet-300">{view}<ChevronRight size={13}/></button>) : <p className="text-xs text-slate-400">Sections you open will appear here.</p>}</div></article>
+                </section>
 
                 <section aria-label="Key performance indicators" className="grid gap-4 sm:grid-cols-2 2xl:grid-cols-4">
                   {metrics.map(({ label, value, change, note, icon: Icon, bg, color, positive }) => (
@@ -3237,8 +3315,8 @@ export default function AdminDashboardPage() {
                         <h2 className="font-bold">Action required</h2>
                         <p className="mt-1 text-xs text-slate-500">Queues that need admin attention</p>
                       </div>
-                      <button onClick={() => action("All pending queues opened")} className="text-xs font-semibold text-violet-600">
-                        View all
+                      <button onClick={() => navigateTo("Withdrawals")} className="text-xs font-semibold text-violet-600">
+                        Open first queue
                       </button>
                     </div>
                     <div className="space-y-3">
@@ -3247,8 +3325,9 @@ export default function AdminDashboardPage() {
                         ["12 KYC profiles to review", "Oldest request is 9 hours old", "bg-violet-50 text-violet-600", UserCheck, "Medium"],
                         ["3 high-risk accounts detected", "Device duplication and rapid-task signals", "bg-rose-50 text-rose-600", ShieldAlert, "Urgent"],
                         ["5 support tickets are open", "2 are waiting beyond response target", "bg-blue-50 text-blue-600", Headphones, "Medium"],
-                      ].map(([title, sub, tone, Icon, priority]) => (
-                        <button key={title as string} onClick={() => action(`${title} queue opened`)} className="flex w-full items-center gap-3 rounded-xl border border-slate-100 p-3 text-left hover:border-violet-200 hover:bg-violet-50/30">
+                      ].map(([title, sub, tone, Icon, priority], index) => {
+                        const target: AdminView[] = ["Withdrawals", "KYC Verification", "Fraud & Risk", "Support Centre"];
+                        return <button key={title as string} onClick={() => navigateTo(target[index])} className="flex w-full items-center gap-3 rounded-xl border border-slate-100 p-3 text-left hover:border-violet-200 hover:bg-violet-50/30">
                           <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl ${tone}`}>
                             <Icon size={19} />
                           </span>
@@ -3257,8 +3336,8 @@ export default function AdminDashboardPage() {
                             <span className="block truncate text-[11px] text-slate-500">{sub as string}</span>
                           </span>
                           <span className={`ml-auto rounded-full px-2 py-1 text-[9px] font-bold ${priority === "Urgent" ? "bg-rose-100 text-rose-700" : priority === "High" ? "bg-amber-100 text-amber-700" : "bg-slate-100 text-slate-600"}`}>{priority as string}</span>
-                        </button>
-                      ))}
+                        </button>;
+                      })}
                     </div>
                   </article>
                   <article className="rounded-2xl border border-[#e7e9f1] bg-white p-5 shadow-sm md:p-6">
@@ -3413,7 +3492,7 @@ export default function AdminDashboardPage() {
             )}
           </div>
           <footer className="mx-auto mt-8 flex max-w-[1500px] flex-col gap-2 border-t border-slate-200 py-5 text-[11px] text-slate-400 sm:flex-row sm:items-center sm:justify-between">
-            <span>Glonni Ads Admin · Final Step 18 interface audit</span>
+            <span>Glonni Ads Admin · UX Completion Step 1</span>
             <span>Mock data only · No live providers, payments, messages or account changes</span>
           </footer>
         </main>
