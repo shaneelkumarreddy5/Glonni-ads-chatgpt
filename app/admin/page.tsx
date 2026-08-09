@@ -1,12 +1,12 @@
 "use client";
 /* eslint-disable @typescript-eslint/no-unused-vars -- compact mock document cards retain map indices for future ordering */
 
-import { Activity, ArrowDownRight, ArrowUpRight, BadgeIndianRupee, Bell, CalendarDays, CheckCircle2, ChevronDown, CircleAlert, Clock3, Download, FileText, Gamepad2, Gift, HandCoins, Headphones, LayoutDashboard, Menu, MonitorPlay, Moon, MoreHorizontal, PackageCheck, PanelLeftClose, RefreshCw, Search, Settings, ShieldAlert, ShieldCheck, ShoppingBag, SlidersHorizontal, Store, TrendingUp, UserCheck, Users, WalletCards, X, Ban, ChevronLeft, ChevronRight, Copy, Eye, Filter, Mail, MapPin, Phone, RotateCcw, Smartphone, UserRound, UserX, Wifi } from "lucide-react";
+import { Activity, ArrowDownRight, ArrowUpRight, BadgeIndianRupee, Bell, CalendarDays, CheckCircle2, ChevronDown, CircleAlert, Clock3, Download, FileText, Gamepad2, Gift, HandCoins, Headphones, LayoutDashboard, Menu, MonitorPlay, Moon, MoreHorizontal, PackageCheck, PanelLeftClose, Plus, RefreshCw, Search, Settings, ShieldAlert, ShieldCheck, ShoppingBag, SlidersHorizontal, Store, TrendingUp, UserCheck, Users, WalletCards, X, Ban, ChevronLeft, ChevronRight, Copy, Eye, Filter, Mail, MapPin, Phone, RotateCcw, Smartphone, UserRound, UserX, Wifi } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 type NavItem = { label: string; icon: typeof LayoutDashboard; badge?: string };
 type NavGroup = { label?: string; items: NavItem[] };
-type AdminView = "Dashboard" | "Users" | "Wallet & Transactions" | "Withdrawals" | "KYC Verification" | "Fraud & Risk";
+type AdminView = "Dashboard" | "Users" | "Wallet & Transactions" | "Withdrawals" | "KYC Verification" | "Fraud & Risk" | "Ad Networks";
 
 const adminViewSlugs: Record<AdminView, string> = {
   Dashboard: "dashboard",
@@ -15,6 +15,7 @@ const adminViewSlugs: Record<AdminView, string> = {
   Withdrawals: "withdrawals",
   "KYC Verification": "kyc-verification",
   "Fraud & Risk": "fraud-risk",
+  "Ad Networks": "ad-networks",
 };
 
 const adminSlugViews = Object.fromEntries(Object.entries(adminViewSlugs).map(([view, slug]) => [slug, view])) as Record<string, AdminView>;
@@ -2306,6 +2307,160 @@ function FraudRiskControl({ action }: { action: (message: string) => void }) {
   );
 }
 
+type AdProvider = {
+  id: string;
+  name: string;
+  model: "SDK" | "API" | "Offerwall";
+  status: "Active" | "Paused" | "Draft";
+  health: "Healthy" | "Degraded" | "Not tested";
+  priority: number;
+  fill: number;
+  impressions: number;
+  completions: number;
+  ecpm: number;
+  revenue: number;
+  rewardCost: number;
+  postback: string;
+};
+
+const initialAdProviders: AdProvider[] = [
+  { id: "NET-001", name: "Reward Network Alpha", model: "SDK", status: "Active", health: "Healthy", priority: 1, fill: 91.4, impressions: 184220, completions: 146802, ecpm: 148, revenue: 27264, rewardCost: 11744, postback: "Verified 2 min ago" },
+  { id: "NET-002", name: "Video Partner Beta", model: "API", status: "Active", health: "Degraded", priority: 2, fill: 73.8, impressions: 96840, completions: 70125, ecpm: 132, revenue: 12783, rewardCost: 5610, postback: "Delayed 8 min" },
+  { id: "NET-003", name: "Offerwall Demo", model: "Offerwall", status: "Paused", health: "Healthy", priority: 3, fill: 82.1, impressions: 44860, completions: 31092, ecpm: 118, revenue: 5293, rewardCost: 2487, postback: "Verified 1 hr ago" },
+  { id: "NET-004", name: "Future Provider Template", model: "API", status: "Draft", health: "Not tested", priority: 4, fill: 0, impressions: 0, completions: 0, ecpm: 0, revenue: 0, rewardCost: 0, postback: "Not configured" },
+];
+
+const adRewardEvents = [
+  { id: "AD-RW-84192", user: "Priya Reddy", provider: "Reward Network Alpha", amount: "₹0.80", status: "Approved", signal: "Clean", time: "2 min ago" },
+  { id: "AD-RW-84191", user: "Karthik Rao", provider: "Video Partner Beta", amount: "₹0.80", status: "Pending", signal: "Callback delayed", time: "6 min ago" },
+  { id: "AD-RW-84190", user: "Aarav Mehta", provider: "Reward Network Alpha", amount: "₹0.80", status: "Held", signal: "Velocity check", time: "11 min ago" },
+  { id: "AD-RW-84189", user: "Sana Khan", provider: "Video Partner Beta", amount: "₹0.80", status: "Duplicate", signal: "Repeated event ID", time: "18 min ago" },
+  { id: "AD-RW-84188", user: "Vikram Singh", provider: "Reward Network Alpha", amount: "₹0.80", status: "Approved", signal: "Clean", time: "24 min ago" },
+];
+
+function AdNetworksManagement({ action }: { action: (message: string) => void }) {
+  const [providers, setProviders] = useState(initialAdProviders);
+  const [selected, setSelected] = useState<AdProvider | null>(null);
+  const [tab, setTab] = useState<"Networks" | "Reward events" | "Claims & postbacks">("Networks");
+  const [range, setRange] = useState("30 days");
+  const [addOpen, setAddOpen] = useState(false);
+  const [confirmAction, setConfirmAction] = useState<"pause" | "activate" | "remove" | null>(null);
+  const [networkName, setNetworkName] = useState("");
+  const [integration, setIntegration] = useState<AdProvider["model"]>("API");
+  const [reason, setReason] = useState("");
+  const [eventFilter, setEventFilter] = useState("All");
+
+  const activeProviders = providers.filter((provider) => provider.status === "Active").length;
+  const totalRevenue = providers.reduce((sum, provider) => sum + provider.revenue, 0);
+  const totalRewards = providers.reduce((sum, provider) => sum + provider.rewardCost, 0);
+  const averageFill = providers.filter((provider) => provider.status === "Active").reduce((sum, provider, _, list) => sum + provider.fill / list.length, 0);
+  const filteredEvents = eventFilter === "All" ? adRewardEvents : adRewardEvents.filter((event) => event.status === eventFilter);
+
+  const addNetwork = () => {
+    if (!networkName.trim()) return;
+    const newProvider: AdProvider = {
+      id: `NET-${String(providers.length + 1).padStart(3, "0")}`,
+      name: networkName.trim(), model: integration, status: "Draft", health: "Not tested",
+      priority: providers.length + 1, fill: 0, impressions: 0, completions: 0, ecpm: 0, revenue: 0, rewardCost: 0, postback: "Not configured",
+    };
+    setProviders((current) => [...current, newProvider]);
+    setNetworkName("");
+    setAddOpen(false);
+    action("New network draft added to mock configuration");
+  };
+
+  const confirmProviderAction = () => {
+    if (!selected || !confirmAction || !reason.trim()) return;
+    if (confirmAction === "remove") {
+      setProviders((current) => current.filter((provider) => provider.id !== selected.id));
+      setSelected(null);
+    } else {
+      const status = confirmAction === "pause" ? "Paused" : "Active";
+      setProviders((current) => current.map((provider) => provider.id === selected.id ? { ...provider, status } : provider));
+      setSelected((current) => current ? { ...current, status } : current);
+    }
+    action(`Mock network ${confirmAction} action recorded`);
+    setConfirmAction(null);
+    setReason("");
+  };
+
+  return (
+    <>
+      <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        <div>
+          <div className="mb-2 text-xs text-slate-400">Earnings <span className="px-2">›</span> Ad Networks</div>
+          <h1 className="text-2xl font-bold tracking-tight md:text-[28px]">Watch &amp; Earn / Ad Networks</h1>
+          <p className="mt-1 max-w-3xl text-sm text-slate-500">Configure any current or future rewarded-ad provider, monitor delivery, and investigate reward callbacks. All data and actions are mock-only.</p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <select aria-label="Ad network report period" value={range} onChange={(event) => setRange(event.target.value)} className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold outline-none">
+            <option>7 days</option><option>30 days</option><option>90 days</option>
+          </select>
+          <button onClick={() => action("Mock ad-network report exported")} className="flex h-11 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-xs font-bold text-slate-600"><Download size={16} />Export</button>
+          <button onClick={() => setAddOpen(true)} className="flex h-11 items-center gap-2 rounded-xl bg-violet-600 px-4 text-xs font-bold text-white shadow-lg shadow-violet-200"><Plus size={17} />Add new network</button>
+        </div>
+      </div>
+
+      <div className="mb-5 rounded-2xl border border-violet-100 bg-violet-50 p-4 text-xs leading-5 text-violet-800">
+        <strong>Provider-independent setup:</strong> no network is pre-installed. These generic records demonstrate the workflow; production providers will be added with their own credentials, SDK/API details, postback mapping and reward rules.
+      </div>
+
+      <section className="grid gap-4 sm:grid-cols-2 2xl:grid-cols-4">
+        {[
+          ["Active networks", `${activeProviders} of ${providers.length}`, "Priority fallback enabled", MonitorPlay, "bg-violet-50 text-violet-700"],
+          ["Average fill rate", `${averageFill.toFixed(1)}%`, `Across active providers · ${range}`, Activity, "bg-blue-50 text-blue-700"],
+          ["Provider revenue", `₹${totalRevenue.toLocaleString("en-IN")}`, "Mock gross revenue", TrendingUp, "bg-emerald-50 text-emerald-700"],
+          ["User reward cost", `₹${totalRewards.toLocaleString("en-IN")}`, `${totalRevenue ? ((totalRewards / totalRevenue) * 100).toFixed(1) : 0}% of revenue`, BadgeIndianRupee, "bg-amber-50 text-amber-700"],
+        ].map(([label, value, note, Icon, color]) => (
+          <article key={label as string} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className={`grid h-10 w-10 place-items-center rounded-xl ${color}`}><Icon size={19} /></div>
+            <p className="mt-4 text-xs font-semibold text-slate-500">{label as string}</p><p className="mt-1 text-2xl font-bold">{value as string}</p><p className="mt-1 text-[11px] text-slate-400">{note as string}</p>
+          </article>
+        ))}
+      </section>
+
+      <div className="mt-6 flex gap-1 overflow-x-auto rounded-xl border border-slate-200 bg-white p-1.5">
+        {(["Networks", "Reward events", "Claims & postbacks"] as const).map((item) => <button key={item} onClick={() => setTab(item)} className={`h-10 whitespace-nowrap rounded-lg px-4 text-xs font-bold ${tab === item ? "bg-violet-600 text-white" : "text-slate-500 hover:bg-slate-50"}`}>{item}</button>)}
+      </div>
+
+      {tab === "Networks" && (
+        <section className="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <div className="flex flex-col gap-3 border-b p-5 sm:flex-row sm:items-center sm:justify-between"><div><h2 className="font-bold">Network priority &amp; performance</h2><p className="mt-1 text-xs text-slate-500">Lower priority numbers receive traffic first; fallback providers cover unavailable inventory.</p></div><button onClick={() => action("Mock provider health checks started")} className="flex h-10 items-center gap-2 rounded-xl border px-3 text-xs font-bold text-slate-600"><RefreshCw size={15} />Test all connections</button></div>
+          <div className="overflow-x-auto"><table className="w-full min-w-[980px] text-left text-xs"><thead className="bg-slate-50 text-[10px] uppercase tracking-wider text-slate-400"><tr>{["Priority / network", "Integration", "Status", "Health", "Fill", "Completed views", "eCPM", "Revenue / rewards", ""].map((heading) => <th key={heading} className="px-5 py-3 font-bold">{heading}</th>)}</tr></thead><tbody className="divide-y">
+            {[...providers].sort((a, b) => a.priority - b.priority).map((provider) => <tr key={provider.id} className="hover:bg-slate-50"><td className="px-5 py-4"><div className="flex items-center gap-3"><span className="grid h-8 w-8 place-items-center rounded-lg bg-violet-50 font-bold text-violet-700">{provider.priority}</span><div><p className="font-bold text-slate-800">{provider.name}</p><p className="mt-1 text-[10px] text-slate-400">{provider.id} · Mock</p></div></div></td><td className="px-5 py-4 font-semibold">{provider.model}</td><td className="px-5 py-4"><span className={`rounded-full px-2.5 py-1 text-[10px] font-bold ${provider.status === "Active" ? "bg-emerald-50 text-emerald-700" : provider.status === "Paused" ? "bg-amber-50 text-amber-700" : "bg-slate-100 text-slate-500"}`}>{provider.status}</span></td><td className="px-5 py-4"><span className={provider.health === "Healthy" ? "text-emerald-600" : provider.health === "Degraded" ? "text-amber-600" : "text-slate-400"}>● {provider.health}</span><p className="mt-1 text-[10px] text-slate-400">{provider.postback}</p></td><td className="px-5 py-4 font-bold">{provider.fill}%</td><td className="px-5 py-4">{provider.completions.toLocaleString("en-IN")}</td><td className="px-5 py-4">₹{provider.ecpm}</td><td className="px-5 py-4"><p className="font-bold text-emerald-700">₹{provider.revenue.toLocaleString("en-IN")}</p><p className="mt-1 text-[10px] text-slate-400">₹{provider.rewardCost.toLocaleString("en-IN")} rewards</p></td><td className="px-5 py-4"><button onClick={() => setSelected(provider)} className="h-9 rounded-lg border px-3 font-bold text-violet-600">Manage</button></td></tr>)}
+          </tbody></table></div>
+        </section>
+      )}
+
+      {tab === "Reward events" && (
+        <section className="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <div className="flex flex-col gap-3 border-b p-5 sm:flex-row sm:items-center sm:justify-between"><div><h2 className="font-bold">Reward event monitor</h2><p className="mt-1 text-xs text-slate-500">Server callback states, duplicate protection and held rewards.</p></div><select aria-label="Filter reward events" value={eventFilter} onChange={(event) => setEventFilter(event.target.value)} className="h-10 rounded-xl border px-3 text-xs font-bold"><option>All</option><option>Approved</option><option>Pending</option><option>Held</option><option>Duplicate</option></select></div>
+          <div className="overflow-x-auto"><table className="w-full min-w-[820px] text-left text-xs"><thead className="bg-slate-50 text-[10px] uppercase tracking-wider text-slate-400"><tr>{["Event", "User", "Provider", "Reward", "Status", "Verification signal", "Received"].map((heading) => <th className="px-5 py-3" key={heading}>{heading}</th>)}</tr></thead><tbody className="divide-y">{filteredEvents.map((event) => <tr key={event.id}><td className="px-5 py-4 font-bold text-violet-700">{event.id}</td><td className="px-5 py-4 font-semibold">{event.user}</td><td className="px-5 py-4">{event.provider}</td><td className="px-5 py-4 font-bold">{event.amount}</td><td className="px-5 py-4"><span className={`rounded-full px-2.5 py-1 text-[10px] font-bold ${event.status === "Approved" ? "bg-emerald-50 text-emerald-700" : event.status === "Duplicate" ? "bg-rose-50 text-rose-700" : "bg-amber-50 text-amber-700"}`}>{event.status}</span></td><td className="px-5 py-4">{event.signal}</td><td className="px-5 py-4 text-slate-400">{event.time}</td></tr>)}</tbody></table></div>
+        </section>
+      )}
+
+      {tab === "Claims & postbacks" && (
+        <section className="mt-4 grid gap-5 xl:grid-cols-2">
+          <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><div className="flex items-center justify-between"><div><h2 className="font-bold">Missing reward claims</h2><p className="mt-1 text-xs text-slate-500">3 mock claims require callback matching.</p></div><span className="rounded-full bg-rose-50 px-3 py-1 text-[10px] font-bold text-rose-700">3 OPEN</span></div>{[["CLM-3082", "Callback not received", "18 min"], ["CLM-3081", "Completion disputed", "1 hr"], ["CLM-3078", "Reward held by risk rule", "3 hr"]].map(([id, issue, time]) => <button key={id} onClick={() => action(`${id} mock claim opened`)} className="mt-3 flex w-full items-center rounded-xl border p-4 text-left"><span className="grid h-9 w-9 place-items-center rounded-lg bg-amber-50 text-amber-600"><CircleAlert size={17} /></span><span className="ml-3"><b className="block text-xs">{id}</b><span className="text-[11px] text-slate-500">{issue}</span></span><span className="ml-auto text-[10px] text-slate-400">{time}</span></button>)}</article>
+          <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><div className="flex items-center justify-between"><div><h2 className="font-bold">Postback health</h2><p className="mt-1 text-xs text-slate-500">Mock delivery and signature-verification summary.</p></div><Wifi size={19} className="text-emerald-600" /></div>{[["Callbacks received", "248,019", "99.2%"], ["Signature verified", "246,884", "99.5%"], ["Duplicates blocked", "1,135", "0.5%"], ["Retry queue", "42", "Needs review"]].map(([label, value, note]) => <div key={label} className="mt-4 flex items-center border-b border-slate-100 pb-4 last:border-0"><div><p className="text-xs font-bold">{label}</p><p className="mt-1 text-[10px] text-slate-400">{note}</p></div><strong className="ml-auto text-sm">{value}</strong></div>)}</article>
+        </section>
+      )}
+
+      {selected && (
+        <div className="fixed inset-0 z-[70] bg-slate-950/40" onMouseDown={(event) => event.target === event.currentTarget && setSelected(null)}><aside role="dialog" aria-modal="true" aria-label="Manage ad network" className="admin-scroll ml-auto h-full w-full max-w-xl overflow-y-auto bg-[#f7f8fc] shadow-2xl"><div className="sticky top-0 z-10 flex items-center border-b bg-white p-5"><div><p className="text-[10px] font-bold uppercase tracking-wider text-violet-600">{selected.id} · Mock provider</p><h2 className="mt-1 text-xl font-bold">{selected.name}</h2></div><button aria-label="Close network details" onClick={() => setSelected(null)} className="ml-auto grid h-10 w-10 place-items-center rounded-xl border"><X size={18} /></button></div><div className="space-y-4 p-5">
+          <section className="rounded-2xl border bg-white p-5"><h3 className="font-bold">Connection configuration</h3><p className="mt-1 text-xs text-slate-500">Credentials are placeholders only and are never stored in this mock UI.</p><div className="mt-4 grid gap-3 sm:grid-cols-2">{[["Integration", selected.model], ["Priority", String(selected.priority)], ["Callback URL", "/api/postbacks/provider"], ["Signature method", "HMAC / provider-defined"]].map(([label, value]) => <div key={label} className="rounded-xl bg-slate-50 p-3"><p className="text-[10px] uppercase text-slate-400">{label}</p><p className="mt-1 break-all text-xs font-bold">{value}</p></div>)}</div><button onClick={() => action("Mock network configuration editor opened")} className="mt-4 h-10 rounded-xl border border-violet-200 px-4 text-xs font-bold text-violet-700">Edit configuration</button></section>
+          <section className="rounded-2xl border bg-white p-5"><h3 className="font-bold">Reward &amp; delivery rules</h3><div className="mt-4 grid gap-3 sm:grid-cols-2">{[["User reward", "₹0.80 per approved view"], ["Daily cap", "20 ads per user"], ["Approval", "Verified server callback"], ["Fallback", `Priority ${selected.priority + 1} if unavailable`]].map(([label, value]) => <div key={label} className="rounded-xl bg-slate-50 p-3"><p className="text-[10px] uppercase text-slate-400">{label}</p><p className="mt-1 text-xs font-bold">{value}</p></div>)}</div><p className="mt-4 text-[11px] leading-5 text-amber-700">Production rules must be enforced by the backend, never by browser state.</p></section>
+          <section className="rounded-2xl border bg-white p-5"><h3 className="font-bold">Sensitive actions</h3><div className="mt-4 flex flex-wrap gap-2"><button onClick={() => action("Mock connection test passed")} className="h-10 rounded-xl border border-emerald-200 px-4 text-xs font-bold text-emerald-700">Test connection</button>{selected.status === "Active" ? <button onClick={() => setConfirmAction("pause")} className="h-10 rounded-xl border border-amber-200 px-4 text-xs font-bold text-amber-700">Pause network</button> : <button onClick={() => setConfirmAction("activate")} className="h-10 rounded-xl bg-violet-600 px-4 text-xs font-bold text-white">Activate network</button>}<button onClick={() => setConfirmAction("remove")} className="h-10 rounded-xl border border-rose-200 px-4 text-xs font-bold text-rose-700">Remove</button></div></section>
+        </div></aside></div>
+      )}
+
+      {addOpen && <div className="fixed inset-0 z-[90] grid place-items-center bg-slate-950/50 p-4"><div role="dialog" aria-modal="true" className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl"><div className="flex items-start"><div><p className="text-[10px] font-bold uppercase tracking-wider text-violet-600">Flexible provider setup</p><h3 className="mt-1 text-xl font-bold">Add new ad network</h3><p className="mt-2 text-xs leading-5 text-slate-500">Create a draft now. Credentials, endpoints, event mapping and security checks will be configured only during real integration.</p></div><button aria-label="Close add network" onClick={() => setAddOpen(false)} className="ml-auto grid h-10 w-10 place-items-center rounded-xl border"><X size={18} /></button></div><label className="mt-5 block text-xs font-bold">Network name<input autoFocus value={networkName} onChange={(event) => setNetworkName(event.target.value)} placeholder="Enter provider name" className="mt-2 h-11 w-full rounded-xl border px-3 font-normal outline-none focus:border-violet-400" /></label><label className="mt-4 block text-xs font-bold">Integration type<select value={integration} onChange={(event) => setIntegration(event.target.value as AdProvider["model"])} className="mt-2 h-11 w-full rounded-xl border bg-white px-3 font-normal"><option>API</option><option>SDK</option><option>Offerwall</option></select></label><div className="mt-5 rounded-xl bg-amber-50 p-3 text-[11px] leading-5 text-amber-800">The provider will remain in Draft until credentials, callback verification, reward mapping and a connection test are completed.</div><div className="mt-6 flex justify-end gap-2"><button onClick={() => setAddOpen(false)} className="h-10 rounded-xl border px-4 text-xs font-bold">Cancel</button><button disabled={!networkName.trim()} onClick={addNetwork} className="h-10 rounded-xl bg-violet-600 px-4 text-xs font-bold text-white disabled:opacity-40">Create draft</button></div></div></div>}
+
+      {confirmAction && selected && <div className="fixed inset-0 z-[100] grid place-items-center bg-slate-950/55 p-4"><div role="alertdialog" aria-modal="true" className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl"><h3 className="text-lg font-bold capitalize">Confirm {confirmAction} network</h3><p className="mt-2 text-xs leading-5 text-slate-500">This mock action affects {selected.name}. Production will require role permission, backend validation and an immutable audit log.</p><textarea value={reason} onChange={(event) => setReason(event.target.value)} placeholder="Required reason" className="mt-4 h-24 w-full rounded-xl border p-3 text-xs outline-none focus:border-violet-400" /><div className="mt-5 flex justify-end gap-2"><button onClick={() => { setConfirmAction(null); setReason(""); }} className="h-10 rounded-xl border px-4 text-xs font-bold">Cancel</button><button disabled={!reason.trim()} onClick={confirmProviderAction} className={`h-10 rounded-xl px-4 text-xs font-bold text-white disabled:opacity-40 ${confirmAction === "remove" ? "bg-rose-600" : "bg-violet-600"}`}>Confirm</button></div></div></div>}
+    </>
+  );
+}
+
 function MiniLine({ values }: { values: number[] }) {
   const points = values.map((v, i) => `${(i / (values.length - 1)) * 100},${100 - v}`).join(" ");
   return (
@@ -2415,7 +2570,7 @@ export default function AdminDashboardPage() {
               {group.label && !collapsed && <p className="mb-2 px-3 text-[10px] font-semibold tracking-[.14em] text-slate-500">{group.label}</p>}
               <div className="space-y-1">
                 {group.items.map((item) => {
-                  const enabled = item.label === "Dashboard" || item.label === "Users" || item.label === "Wallet & Transactions" || item.label === "Withdrawals" || item.label === "KYC Verification" || item.label === "Fraud & Risk";
+                  const enabled = item.label === "Dashboard" || item.label === "Users" || item.label === "Wallet & Transactions" || item.label === "Withdrawals" || item.label === "KYC Verification" || item.label === "Fraud & Risk" || item.label === "Ad Networks";
                   const active = item.label === activeView;
                   const Icon = item.icon;
                   return (
@@ -2530,6 +2685,8 @@ export default function AdminDashboardPage() {
               <KycVerification action={action} />
             ) : activeView === "Fraud & Risk" ? (
               <FraudRiskControl action={action} />
+            ) : activeView === "Ad Networks" ? (
+              <AdNetworksManagement action={action} />
             ) : (
               <>
                 <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
