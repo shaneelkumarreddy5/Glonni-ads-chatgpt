@@ -1,6 +1,3 @@
-Warning: truncated output (original token count: 53723)
-Total output lines: 3139
-
 "use client";
 /* eslint-disable @typescript-eslint/no-unused-vars -- compact mock document cards retain map indices for future ordering */
 
@@ -2176,7 +2173,247 @@ function FraudRiskControl({ action }: { action: (message: string) => void }) {
         </div>
         <div className="border-t px-5 py-4 text-xs text-slate-500">Showing {rows.length} mock cases · Signals require human review before enforcement</div>
       </section>
-      <section classN…3723 tokens truncated…nue`, BadgeIndianRupee, "bg-amber-50 text-amber-700"],
+      <section className="mt-6 grid gap-6 xl:grid-cols-2">
+        <article className="rounded-2xl border bg-white p-5 shadow-sm">
+          <h2 className="font-bold">Detection coverage</h2>
+          <p className="mt-1 text-xs text-slate-500">Mock rules across the earning journey.</p>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            {[
+              ["Device & account links", "Fingerprint, IP and payout identity", Smartphone],
+              ["Reward velocity", "Impossible completion patterns", Activity],
+              ["Provider integrity", "Callback and attribution checks", RefreshCw],
+              ["Withdrawal protection", "KYC, ownership and hold rules", ShieldCheck],
+            ].map(([a, b, I]) => (
+              <div key={a as string} className="flex gap-3 rounded-xl bg-slate-50 p-3">
+                <I size={18} className="text-violet-600" />
+                <div>
+                  <b className="text-xs">{a as string}</b>
+                  <p className="text-[10px] text-slate-500">{b as string}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </article>
+        <article className="rounded-2xl border bg-white p-5 shadow-sm">
+          <h2 className="font-bold">Decision safeguards</h2>
+          <p className="mt-1 text-xs text-slate-500">Risk score assists review; it does not automatically punish users.</p>
+          <div className="mt-4 space-y-3 text-xs">
+            {["Evidence shown before every decision", "Reason required for warnings, blocks and clearance", "Held rewards remain traceable in the wallet ledger", "Appeals preserve the original decision and reviewer"].map((x, i) => (
+              <div key={x} className="flex gap-3 rounded-xl border p-3">
+                <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-violet-50 text-[10px] font-bold text-violet-700">{i + 1}</span>
+                <span>{x}</span>
+              </div>
+            ))}
+          </div>
+        </article>
+      </section>
+      {selected && (
+        <div className="fixed inset-0 z-[70] flex justify-end">
+          <button aria-label="Close risk investigation" onClick={() => setSelected(null)} className="absolute inset-0 bg-slate-950/40" />
+          <aside role="dialog" aria-modal="true" className="admin-scroll relative h-full w-full max-w-[660px] overflow-y-auto bg-[#f7f8fc] shadow-2xl">
+            <header className="sticky top-0 z-10 flex items-center border-b bg-white p-5">
+              <div>
+                <p className="text-xs text-slate-400">Risk investigation</p>
+                <h2 className="font-bold">
+                  {selected.id} · {selected.user}
+                </h2>
+              </div>
+              <button aria-label="Close investigation" onClick={() => setSelected(null)} className="ml-auto grid h-10 w-10 place-items-center">
+                <X />
+              </button>
+            </header>
+            <div className="space-y-4 p-5">
+              <section className="rounded-2xl border bg-white p-5">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className={`rounded-full px-3 py-1 text-xs font-bold ${severityTone(selected.severity)}`}>
+                    {selected.severity} · {selected.score}/100
+                  </span>
+                  <span className={`rounded-full px-3 py-1 text-xs font-bold ${statusTone(selected.status)}`}>{selected.status}</span>
+                </div>
+                <h3 className="mt-4 text-lg font-bold">{selected.signal}</h3>
+                <p className="text-xs text-slate-500">
+                  {selected.source} · {selected.created}
+                </p>
+                <dl className="mt-5 grid gap-3 text-xs sm:grid-cols-2">
+                  {[
+                    ["User", `${selected.user} · ${selected.userId}`],
+                    ["Protected value", selected.amount],
+                    ["Device", selected.device],
+                    ["Last IP", selected.ip],
+                  ].map((x) => (
+                    <div key={x[0]} className="rounded-xl bg-slate-50 p-3">
+                      <dt className="text-[10px] text-slate-400">{x[0]}</dt>
+                      <dd className="mt-1 font-bold">{x[1]}</dd>
+                    </div>
+                  ))}
+                </dl>
+              </section>
+              <section className="rounded-2xl border bg-white p-5">
+                <h3 className="font-bold">Evidence timeline</h3>
+                <div className="mt-4 space-y-4 border-l-2 border-violet-100 pl-4">
+                  {selected.evidence.map((x, i) => (
+                    <div key={x}>
+                      <b className="text-xs">Signal {i + 1}</b>
+                      <p className="mt-1 text-xs text-slate-500">{x}</p>
+                    </div>
+                  ))}
+                </div>
+              </section>
+              <section className="rounded-2xl border bg-white p-5">
+                <h3 className="font-bold">Investigation actions</h3>
+                <p className="mt-1 text-xs text-slate-500">Every choice requires a reason and creates a mock audit record.</p>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <button onClick={() => setDecision("clear")} className="h-10 rounded-xl border border-emerald-200 px-4 text-xs font-bold text-emerald-700">
+                    Clear case
+                  </button>
+                  <button onClick={() => setDecision("warn")} className="h-10 rounded-xl border border-amber-200 px-4 text-xs font-bold text-amber-700">
+                    Warn user
+                  </button>
+                  <button onClick={() => setDecision("block")} className="h-10 rounded-xl bg-rose-600 px-4 text-xs font-bold text-white">
+                    Block account &amp; rewards
+                  </button>
+                  {selected.status === "Appealed" && (
+                    <button onClick={() => setDecision("appeal")} className="h-10 rounded-xl bg-violet-600 px-4 text-xs font-bold text-white">
+                      Resolve appeal
+                    </button>
+                  )}
+                </div>
+              </section>
+            </div>
+          </aside>
+        </div>
+      )}
+      {decision && selected && (
+        <div className="fixed inset-0 z-[90] grid place-items-center bg-slate-950/50 p-4">
+          <div role="alertdialog" aria-modal="true" className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+            <h3 className="text-lg font-bold capitalize">Confirm {decision} decision</h3>
+            <p className="mt-2 text-xs leading-5 text-slate-500">This is a mock action for {selected.id}. Production will require permissions, server enforcement and an immutable audit record.</p>
+            <textarea value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Required investigation reason" className="mt-4 h-24 w-full rounded-xl border p-3 text-xs outline-none focus:border-violet-400" />
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                onClick={() => {
+                  setDecision(null);
+                  setReason("");
+                }}
+                className="h-10 rounded-xl border px-4 text-xs font-bold"
+              >
+                Cancel
+              </button>
+              <button disabled={!reason.trim()} onClick={confirm} className={`h-10 rounded-xl px-4 text-xs font-bold text-white disabled:opacity-40 ${decision === "block" ? "bg-rose-600" : "bg-violet-600"}`}>
+                Confirm decision
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+type AdProvider = {
+  id: string;
+  name: string;
+  model: "SDK" | "API" | "Offerwall";
+  status: "Active" | "Paused" | "Draft";
+  health: "Healthy" | "Degraded" | "Not tested";
+  priority: number;
+  fill: number;
+  impressions: number;
+  completions: number;
+  ecpm: number;
+  revenue: number;
+  rewardCost: number;
+  postback: string;
+};
+
+const initialAdProviders: AdProvider[] = [
+  { id: "NET-001", name: "Reward Network Alpha", model: "SDK", status: "Active", health: "Healthy", priority: 1, fill: 91.4, impressions: 184220, completions: 146802, ecpm: 148, revenue: 27264, rewardCost: 11744, postback: "Verified 2 min ago" },
+  { id: "NET-002", name: "Video Partner Beta", model: "API", status: "Active", health: "Degraded", priority: 2, fill: 73.8, impressions: 96840, completions: 70125, ecpm: 132, revenue: 12783, rewardCost: 5610, postback: "Delayed 8 min" },
+  { id: "NET-003", name: "Offerwall Demo", model: "Offerwall", status: "Paused", health: "Healthy", priority: 3, fill: 82.1, impressions: 44860, completions: 31092, ecpm: 118, revenue: 5293, rewardCost: 2487, postback: "Verified 1 hr ago" },
+  { id: "NET-004", name: "Future Provider Template", model: "API", status: "Draft", health: "Not tested", priority: 4, fill: 0, impressions: 0, completions: 0, ecpm: 0, revenue: 0, rewardCost: 0, postback: "Not configured" },
+];
+
+const adRewardEvents = [
+  { id: "AD-RW-84192", user: "Priya Reddy", provider: "Reward Network Alpha", amount: "₹0.80", status: "Approved", signal: "Clean", time: "2 min ago" },
+  { id: "AD-RW-84191", user: "Karthik Rao", provider: "Video Partner Beta", amount: "₹0.80", status: "Pending", signal: "Callback delayed", time: "6 min ago" },
+  { id: "AD-RW-84190", user: "Aarav Mehta", provider: "Reward Network Alpha", amount: "₹0.80", status: "Held", signal: "Velocity check", time: "11 min ago" },
+  { id: "AD-RW-84189", user: "Sana Khan", provider: "Video Partner Beta", amount: "₹0.80", status: "Duplicate", signal: "Repeated event ID", time: "18 min ago" },
+  { id: "AD-RW-84188", user: "Vikram Singh", provider: "Reward Network Alpha", amount: "₹0.80", status: "Approved", signal: "Clean", time: "24 min ago" },
+];
+
+function AdNetworksManagement({ action }: { action: (message: string) => void }) {
+  const [providers, setProviders] = useState(initialAdProviders);
+  const [selected, setSelected] = useState<AdProvider | null>(null);
+  const [tab, setTab] = useState<"Networks" | "Reward events" | "Claims & postbacks">("Networks");
+  const [range, setRange] = useState("30 days");
+  const [addOpen, setAddOpen] = useState(false);
+  const [confirmAction, setConfirmAction] = useState<"pause" | "activate" | "remove" | null>(null);
+  const [networkName, setNetworkName] = useState("");
+  const [integration, setIntegration] = useState<AdProvider["model"]>("API");
+  const [reason, setReason] = useState("");
+  const [eventFilter, setEventFilter] = useState("All");
+
+  const activeProviders = providers.filter((provider) => provider.status === "Active").length;
+  const totalRevenue = providers.reduce((sum, provider) => sum + provider.revenue, 0);
+  const totalRewards = providers.reduce((sum, provider) => sum + provider.rewardCost, 0);
+  const averageFill = providers.filter((provider) => provider.status === "Active").reduce((sum, provider, _, list) => sum + provider.fill / list.length, 0);
+  const filteredEvents = eventFilter === "All" ? adRewardEvents : adRewardEvents.filter((event) => event.status === eventFilter);
+
+  const addNetwork = () => {
+    if (!networkName.trim()) return;
+    const newProvider: AdProvider = {
+      id: `NET-${String(providers.length + 1).padStart(3, "0")}`,
+      name: networkName.trim(), model: integration, status: "Draft", health: "Not tested",
+      priority: providers.length + 1, fill: 0, impressions: 0, completions: 0, ecpm: 0, revenue: 0, rewardCost: 0, postback: "Not configured",
+    };
+    setProviders((current) => [...current, newProvider]);
+    setNetworkName("");
+    setAddOpen(false);
+    action("New network draft added to mock configuration");
+  };
+
+  const confirmProviderAction = () => {
+    if (!selected || !confirmAction || !reason.trim()) return;
+    if (confirmAction === "remove") {
+      setProviders((current) => current.filter((provider) => provider.id !== selected.id));
+      setSelected(null);
+    } else {
+      const status = confirmAction === "pause" ? "Paused" : "Active";
+      setProviders((current) => current.map((provider) => provider.id === selected.id ? { ...provider, status } : provider));
+      setSelected((current) => current ? { ...current, status } : current);
+    }
+    action(`Mock network ${confirmAction} action recorded`);
+    setConfirmAction(null);
+    setReason("");
+  };
+
+  return (
+    <>
+      <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        <div>
+          <div className="mb-2 text-xs text-slate-400">Earnings <span className="px-2">›</span> Ad Networks</div>
+          <h1 className="text-2xl font-bold tracking-tight md:text-[28px]">Watch &amp; Earn / Ad Networks</h1>
+          <p className="mt-1 max-w-3xl text-sm text-slate-500">Configure any current or future rewarded-ad provider, monitor delivery, and investigate reward callbacks. All data and actions are mock-only.</p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <select aria-label="Ad network report period" value={range} onChange={(event) => setRange(event.target.value)} className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold outline-none">
+            <option>7 days</option><option>30 days</option><option>90 days</option>
+          </select>
+          <button onClick={() => action("Mock ad-network report exported")} className="flex h-11 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-xs font-bold text-slate-600"><Download size={16} />Export</button>
+          <button onClick={() => setAddOpen(true)} className="flex h-11 items-center gap-2 rounded-xl bg-violet-600 px-4 text-xs font-bold text-white shadow-lg shadow-violet-200"><Plus size={17} />Add new network</button>
+        </div>
+      </div>
+
+      <div className="mb-5 rounded-2xl border border-violet-100 bg-violet-50 p-4 text-xs leading-5 text-violet-800">
+        <strong>Provider-independent setup:</strong> no network is pre-installed. These generic records demonstrate the workflow; production providers will be added with their own credentials, SDK/API details, postback mapping and reward rules.
+      </div>
+
+      <section className="grid gap-4 sm:grid-cols-2 2xl:grid-cols-4">
+        {[
+          ["Active networks", `${activeProviders} of ${providers.length}`, "Priority fallback enabled", MonitorPlay, "bg-violet-50 text-violet-700"],
+          ["Average fill rate", `${averageFill.toFixed(1)}%`, `Across active providers · ${range}`, Activity, "bg-blue-50 text-blue-700"],
+          ["Provider revenue", `₹${totalRevenue.toLocaleString("en-IN")}`, "Mock gross revenue", TrendingUp, "bg-emerald-50 text-emerald-700"],
+          ["User reward cost", `₹${totalRewards.toLocaleString("en-IN")}`, `${totalRevenue ? ((totalRewards / totalRevenue) * 100).toFixed(1) : 0}% of revenue`, BadgeIndianRupee, "bg-amber-50 text-amber-700"],
         ].map(([label, value, note, Icon, color]) => (
           <article key={label as string} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <div className={`grid h-10 w-10 place-items-center rounded-xl ${color}`}><Icon size={19} /></div>
