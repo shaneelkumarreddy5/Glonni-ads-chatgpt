@@ -7,6 +7,20 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 type NavItem = { label: string; icon: typeof LayoutDashboard; badge?: string };
 type NavGroup = { label?: string; items: NavItem[] };
 type AdminView = "Dashboard" | "Users" | "Wallet & Transactions" | "Withdrawals" | "KYC Verification" | "Fraud & Risk" | "Ad Networks" | "Surveys" | "App Install Offers" | "Games" | "Shop & Earn" | "Referrals" | "Content" | "Support Centre" | "Reports" | "Settings & Security";
+type SearchRecordType = "User" | "Transaction" | "Withdrawal" | "Support" | "Campaign";
+type SearchRecord = {
+  id: string;
+  type: SearchRecordType;
+  title: string;
+  subtitle: string;
+  status: string;
+  priority: "Low" | "Medium" | "High";
+  updated: string;
+  updatedOrder: number;
+  view: AdminView;
+  details: [string, string][];
+};
+type SavedRecordView = { name: string; type: "All" | SearchRecordType; status: string; priority: string; sort: string };
 
 const adminViewSlugs: Record<AdminView, string> = {
   Dashboard: "dashboard",
@@ -85,6 +99,26 @@ const navGroups: NavGroup[] = [
       { label: "Activity Logs", icon: Activity },
     ],
   },
+];
+
+const searchableRecords: SearchRecord[] = [
+  { id: "GLN-10248", type: "User", title: "Aarav Mehta", subtitle: "aarav.mehta@example.com · Hyderabad", status: "Active", priority: "Low", updated: "2 min ago", updatedOrder: 1, view: "Users", details: [["Phone", "+91 98765 43210"], ["KYC", "Verified"], ["Wallet", "₹684.50"], ["Risk", "Low"]] },
+  { id: "GLN-10247", type: "User", title: "Priya Reddy", subtitle: "priya.reddy@example.com · Nellore", status: "Review", priority: "Medium", updated: "12 min ago", updatedOrder: 2, view: "Users", details: [["Phone", "+91 91234 56780"], ["KYC", "Pending"], ["Wallet", "₹524.20"], ["Risk", "Low"]] },
+  { id: "GLN-10244", type: "User", title: "Vikram Singh", subtitle: "vikram.singh@example.com · Delhi", status: "Suspended", priority: "High", updated: "2 days ago", updatedOrder: 17, view: "Users", details: [["Phone", "+91 93456 78901"], ["KYC", "Pending"], ["Wallet", "₹0.00"], ["Risk", "High"]] },
+  { id: "GLN-RW-90284", type: "Transaction", title: "Game milestone reward", subtitle: "Aarav Mehta · +₹120.00", status: "Approved", priority: "Low", updated: "2 min ago", updatedOrder: 1, view: "Wallet & Transactions", details: [["Direction", "Credit"], ["Source", "Puzzle Kingdom"], ["Amount", "₹120.00"], ["Balance after", "₹684.50"]] },
+  { id: "GLN-WD-90283", type: "Transaction", title: "UPI withdrawal hold", subtitle: "Priya Reddy · −₹500.00", status: "Pending", priority: "High", updated: "8 min ago", updatedOrder: 2, view: "Wallet & Transactions", details: [["Direction", "Debit hold"], ["Source", "Withdrawal"], ["Amount", "₹500.00"], ["Balance after", "₹24.20"]] },
+  { id: "GLN-RW-90280", type: "Transaction", title: "App-install reward", subtitle: "Vikram Singh · +₹45.00", status: "Review", priority: "Medium", updated: "32 min ago", updatedOrder: 5, view: "Wallet & Transactions", details: [["Direction", "Credit"], ["Source", "App install"], ["Amount", "₹45.00"], ["Reason", "Attribution review"]] },
+  { id: "WD-2841", type: "Withdrawal", title: "Priya Reddy", subtitle: "₹500 · UPI · priya@upi", status: "Pending", priority: "High", updated: "8 min ago", updatedOrder: 2, view: "Withdrawals", details: [["Amount", "₹500.00"], ["Method", "UPI"], ["Risk", "Low"], ["Requested", "Today, 19:42"]] },
+  { id: "WD-2838", type: "Withdrawal", title: "Karthik Rao", subtitle: "₹1,250 · Bank transfer", status: "Review", priority: "High", updated: "1 hour ago", updatedOrder: 8, view: "Withdrawals", details: [["Amount", "₹1,250.00"], ["Method", "Bank"], ["Risk", "Medium"], ["Reason", "Name mismatch"]] },
+  { id: "WD-2834", type: "Withdrawal", title: "Ananya Sharma", subtitle: "₹750 · UPI · ananya@okaxis", status: "Paid", priority: "Low", updated: "Yesterday", updatedOrder: 12, view: "Withdrawals", details: [["Amount", "₹750.00"], ["Method", "UPI"], ["Risk", "Low"], ["Provider ref", "PAY-88142"]] },
+  { id: "SUP-4812", type: "Support", title: "Missing game milestone reward", subtitle: "Aarav Mehta · In-app chat", status: "Open", priority: "High", updated: "6 min ago", updatedOrder: 2, view: "Support Centre", details: [["Channel", "In-app chat"], ["Category", "Games"], ["SLA", "42 min remaining"], ["Assigned", "AI Support Agent"]] },
+  { id: "SUP-4809", type: "Support", title: "Withdrawal pending over 24 hours", subtitle: "Priya Reddy · Email", status: "Escalated", priority: "High", updated: "22 min ago", updatedOrder: 4, view: "Support Centre", details: [["Channel", "Email"], ["Category", "Withdrawal"], ["SLA", "Breached"], ["Assigned", "Finance queue"]] },
+  { id: "SUP-4804", type: "Support", title: "How to complete KYC", subtitle: "Sana Khan · Telugu", status: "Resolved", priority: "Low", updated: "3 hours ago", updatedOrder: 10, view: "Support Centre", details: [["Channel", "AI chat"], ["Category", "KYC"], ["Language", "Telugu"], ["Resolution", "Knowledge answer"]] },
+  { id: "CMP-GM-204", type: "Campaign", title: "Puzzle Kingdom Level Rush", subtitle: "Games · Android · India", status: "Active", priority: "Medium", updated: "14 min ago", updatedOrder: 3, view: "Games", details: [["Provider", "MockPlay"], ["Reward", "Up to ₹320"], ["Conversions", "4,280"], ["Ends", "31 Aug 2026"]] },
+  { id: "CMP-SV-119", type: "Campaign", title: "Quick Opinion India", subtitle: "Survey · All verified users", status: "Active", priority: "Low", updated: "28 min ago", updatedOrder: 5, view: "Surveys", details: [["Provider", "SurveyMock"], ["Reward", "₹18–₹80"], ["Completions", "3,915"], ["Quality", "94.2%"]] },
+  { id: "CMP-AD-088", type: "Campaign", title: "Daily Rewarded Video", subtitle: "Watch & Earn · 20 views/day", status: "Active", priority: "Medium", updated: "45 min ago", updatedOrder: 7, view: "Ad Networks", details: [["Provider", "Provider A"], ["User reward", "₹0.80"], ["Daily cap", "20"], ["Delivery", "98.7%"]] },
+  { id: "CMP-SH-064", type: "Campaign", title: "Festival Fashion Cashback", subtitle: "Shop & Earn · Multi-store", status: "Scheduled", priority: "Medium", updated: "Yesterday", updatedOrder: 12, view: "Shop & Earn", details: [["Network", "AffiliateMock"], ["Cashback", "Up to 6%"], ["Starts", "15 Aug 2026"], ["Stores", "4"]] },
+  { id: "CMP-RF-031", type: "Campaign", title: "Invite & Earn August", subtitle: "Referrals · Verified users", status: "Paused", priority: "High", updated: "2 days ago", updatedOrder: 18, view: "Referrals", details: [["Inviter", "₹25"], ["New user", "₹10"], ["Qualified", "1,284"], ["Reason", "Fraud-rule review"]] },
 ];
 
 const metrics = [
@@ -2832,6 +2866,18 @@ export default function AdminDashboardPage() {
   const [toast, setToast] = useState("");
   const [commandOpen, setCommandOpen] = useState(false);
   const [commandQuery, setCommandQuery] = useState("");
+  const [recordType, setRecordType] = useState<"All" | SearchRecordType>("All");
+  const [recordStatus, setRecordStatus] = useState("All statuses");
+  const [recordPriority, setRecordPriority] = useState("All priorities");
+  const [recordSort, setRecordSort] = useState("Recently updated");
+  const [recordPage, setRecordPage] = useState(1);
+  const [selectedRecord, setSelectedRecord] = useState<SearchRecord | null>(null);
+  const [saveViewName, setSaveViewName] = useState("");
+  const [showSaveView, setShowSaveView] = useState(false);
+  const [savedRecordViews, setSavedRecordViews] = useState<SavedRecordView[]>([
+    { name: "High-priority work", type: "All", status: "All statuses", priority: "High", sort: "Recently updated" },
+    { name: "Open support cases", type: "Support", status: "Open", priority: "All priorities", sort: "Recently updated" },
+  ]);
   const commandInputRef = useRef<HTMLInputElement>(null);
   const notifications: { id: string; title: string; detail: string; view: AdminView; urgent?: boolean }[] = [
     { id: "withdrawals", title: "8 withdrawals await approval", detail: "₹74,260 requested", view: "Withdrawals" },
@@ -2846,6 +2892,26 @@ export default function AdminDashboardPage() {
     const query = commandQuery.trim().toLowerCase();
     return adminViews.filter((view) => !query || view.toLowerCase().includes(query));
   }, [commandQuery]);
+  const recordStatuses = useMemo(() => Array.from(new Set(searchableRecords.filter((record) => recordType === "All" || record.type === recordType).map((record) => record.status))).sort(), [recordType]);
+  const recordResults = useMemo(() => {
+    const query = commandQuery.trim().toLowerCase();
+    const matches = searchableRecords.filter((record) => {
+      const searchable = `${record.id} ${record.type} ${record.title} ${record.subtitle} ${record.status} ${record.details.flat().join(" ")}`.toLowerCase();
+      return (!query || searchable.includes(query)) &&
+        (recordType === "All" || record.type === recordType) &&
+        (recordStatus === "All statuses" || record.status === recordStatus) &&
+        (recordPriority === "All priorities" || record.priority === recordPriority);
+    });
+    return [...matches].sort((a, b) => {
+      if (recordSort === "Oldest updated") return b.updatedOrder - a.updatedOrder;
+      if (recordSort === "Priority: high first") return ({ High: 0, Medium: 1, Low: 2 }[a.priority] - { High: 0, Medium: 1, Low: 2 }[b.priority]) || a.updatedOrder - b.updatedOrder;
+      if (recordSort === "ID: A to Z") return a.id.localeCompare(b.id);
+      return a.updatedOrder - b.updatedOrder;
+    });
+  }, [commandQuery, recordPriority, recordSort, recordStatus, recordType]);
+  const recordPageSize = 6;
+  const recordPageCount = Math.max(1, Math.ceil(recordResults.length / recordPageSize));
+  const pagedRecordResults = recordResults.slice((Math.min(recordPage, recordPageCount) - 1) * recordPageSize, Math.min(recordPage, recordPageCount) * recordPageSize);
   const action = (message: string) => {
     setToast(message);
     window.setTimeout(() => setToast(""), 2400);
@@ -2875,12 +2941,14 @@ export default function AdminDashboardPage() {
   const navigateTo = useCallback((view: AdminView, replace = false) => {
     const url = new URL(window.location.href);
     url.searchParams.set("section", adminViewSlugs[view]);
+    url.searchParams.delete("record");
     const currentPosition = Number(window.history.state?.adminPosition ?? 0);
     const nextPosition = replace ? currentPosition : currentPosition + 1;
     const nextLength = replace ? Math.max(Number(window.sessionStorage.getItem("glonni-admin-history-length") ?? 1), nextPosition + 1) : nextPosition + 1;
     window.history[replace ? "replaceState" : "pushState"]({ ...window.history.state, adminView: view, adminPosition: nextPosition }, "", url);
     window.sessionStorage.setItem("glonni-admin-history-length", String(nextLength));
     setActiveView(view);
+    setSelectedRecord(null);
     rememberView(view);
     setHistoryPosition(nextPosition);
     setHistoryLength(nextLength);
@@ -2888,6 +2956,51 @@ export default function AdminDashboardPage() {
     setNoticeOpen(false);
     window.scrollTo({ top: 0, behavior: "smooth" });
   }, [rememberView]);
+
+  const openRecord = useCallback((record: SearchRecord) => {
+    const url = new URL(window.location.href);
+    url.searchParams.set("section", adminViewSlugs[record.view]);
+    url.searchParams.set("record", record.id);
+    const currentPosition = Number(window.history.state?.adminPosition ?? 0);
+    const nextPosition = currentPosition + 1;
+    window.history.pushState({ ...window.history.state, adminView: record.view, adminPosition: nextPosition, adminRecord: record.id }, "", url);
+    window.sessionStorage.setItem("glonni-admin-history-length", String(nextPosition + 1));
+    setActiveView(record.view);
+    setSelectedRecord(record);
+    rememberView(record.view);
+    setHistoryPosition(nextPosition);
+    setHistoryLength(nextPosition + 1);
+    setCommandOpen(false);
+    setCommandQuery("");
+    setMenuOpen(false);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [rememberView]);
+
+  const closeRecord = useCallback(() => {
+    const url = new URL(window.location.href);
+    url.searchParams.delete("record");
+    window.history.replaceState({ ...window.history.state, adminRecord: undefined }, "", url);
+    setSelectedRecord(null);
+  }, []);
+
+  const applySavedRecordView = (view: SavedRecordView) => {
+    setRecordType(view.type);
+    setRecordStatus(view.status);
+    setRecordPriority(view.priority);
+    setRecordSort(view.sort);
+    setRecordPage(1);
+  };
+
+  const saveCurrentRecordView = () => {
+    const name = saveViewName.trim();
+    if (!name) return;
+    const next = [...savedRecordViews.filter((view) => view.name.toLowerCase() !== name.toLowerCase()), { name, type: recordType, status: recordStatus, priority: recordPriority, sort: recordSort }];
+    setSavedRecordViews(next);
+    window.localStorage.setItem("glonni-admin-saved-record-views", JSON.stringify(next));
+    setSaveViewName("");
+    setShowSaveView(false);
+    action(`Saved search view “${name}”`);
+  };
 
   const goBack = useCallback(() => {
     const position = Number(window.history.state?.adminPosition ?? 0);
@@ -2903,14 +3016,20 @@ export default function AdminDashboardPage() {
     const initialPosition = Number(window.history.state?.adminPosition ?? 0);
     const initialUrl = new URL(window.location.href);
     initialUrl.searchParams.set("section", adminViewSlugs[initialView]);
+    const initialRecordId = initialUrl.searchParams.get("record");
+    const initialRecord = searchableRecords.find((record) => record.id === initialRecordId && record.view === initialView) ?? null;
+    if (!initialRecord) initialUrl.searchParams.delete("record");
     window.history.replaceState({ ...window.history.state, adminView: initialView, adminPosition: initialPosition }, "", initialUrl);
     setActiveView(initialView);
+    setSelectedRecord(initialRecord);
     rememberView(initialView);
     syncHistoryControls();
 
     const handlePopState = () => {
       const nextView = getAdminViewFromUrl();
+      const recordId = new URL(window.location.href).searchParams.get("record");
       setActiveView(nextView);
+      setSelectedRecord(searchableRecords.find((record) => record.id === recordId && record.view === nextView) ?? null);
       rememberView(nextView);
       setMenuOpen(false);
       setNoticeOpen(false);
@@ -2934,6 +3053,17 @@ export default function AdminDashboardPage() {
   }, []);
 
   useEffect(() => {
+    const storedViews = window.localStorage.getItem("glonni-admin-saved-record-views");
+    if (!storedViews) return;
+    try {
+      const parsed = JSON.parse(storedViews) as SavedRecordView[];
+      if (Array.isArray(parsed)) setSavedRecordViews(parsed);
+    } catch {
+      window.localStorage.removeItem("glonni-admin-saved-record-views");
+    }
+  }, []);
+
+  useEffect(() => {
     const handleKeyboard = (event: KeyboardEvent) => {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
         event.preventDefault();
@@ -2942,14 +3072,16 @@ export default function AdminDashboardPage() {
       if (event.key === "Escape") {
         setCommandOpen(false);
         setCommandQuery("");
+        setShowSaveView(false);
         setMenuOpen(false);
         setNoticeOpen(false);
         setProfileOpen(false);
+        if (selectedRecord) closeRecord();
       }
     };
     window.addEventListener("keydown", handleKeyboard);
     return () => window.removeEventListener("keydown", handleKeyboard);
-  }, []);
+  }, [closeRecord, selectedRecord]);
 
   useEffect(() => {
     if (commandOpen) window.setTimeout(() => commandInputRef.current?.focus(), 0);
@@ -2986,26 +3118,59 @@ export default function AdminDashboardPage() {
         </div>
       )}
       {commandOpen && (
-        <div className="fixed inset-0 z-[120] flex items-start justify-center bg-slate-950/55 p-4 pt-[12vh]" onMouseDown={() => { setCommandOpen(false); setCommandQuery(""); }}>
-          <section role="dialog" aria-modal="true" aria-labelledby="admin-command-title" className="w-full max-w-xl overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl" onMouseDown={(event) => event.stopPropagation()}>
-            <h2 id="admin-command-title" className="sr-only">Search admin sections</h2>
-            <label className="flex h-14 items-center gap-3 border-b px-4">
-              <Search size={19} className="text-slate-400" />
-              <span className="sr-only">Search admin sections</span>
-              <input ref={commandInputRef} value={commandQuery} onChange={(event) => setCommandQuery(event.target.value)} placeholder="Go to an admin section…" className="h-full w-full bg-transparent text-sm outline-none" />
-              <kbd className="rounded border bg-slate-50 px-2 py-1 text-[10px] text-slate-400">ESC</kbd>
-            </label>
-            <div className="admin-scroll max-h-[50vh] overflow-y-auto p-2">
-              {commandResults.map((view) => (
-                <button key={view} onClick={() => { navigateTo(view); setCommandOpen(false); setCommandQuery(""); }} className={`flex min-h-11 w-full items-center rounded-xl px-3 text-left text-sm ${view === activeView ? "bg-violet-50 font-bold text-violet-700" : "text-slate-600 hover:bg-slate-50"}`}>
-                  <Search size={15} className="mr-3 text-slate-400" />{view}
-                  {view === activeView && <span className="ml-auto text-[10px] uppercase tracking-wide">Current</span>}
-                </button>
-              ))}
-              {commandResults.length === 0 && <div className="p-8 text-center text-sm text-slate-500">No admin section matches “{commandQuery}”.</div>}
+        <div className="fixed inset-0 z-[120] flex items-start justify-center bg-slate-950/55 p-3 pt-[4vh] sm:p-5 sm:pt-[7vh]" onMouseDown={() => { setCommandOpen(false); setCommandQuery(""); setShowSaveView(false); }}>
+          <section role="dialog" aria-modal="true" aria-labelledby="admin-command-title" className="flex max-h-[88vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl" onMouseDown={(event) => event.stopPropagation()}>
+            <div className="flex items-center border-b px-4 sm:px-5">
+              <Search size={20} className="text-violet-600" />
+              <label className="flex h-16 min-w-0 flex-1 items-center px-3">
+                <span className="sr-only">Search all admin records and sections</span>
+                <input ref={commandInputRef} value={commandQuery} onChange={(event) => { setCommandQuery(event.target.value); setRecordPage(1); }} placeholder="Search name, phone, email, record ID, ticket or campaign…" className="h-full w-full bg-transparent text-sm outline-none sm:text-base" />
+              </label>
+              <kbd className="hidden rounded border bg-slate-50 px-2 py-1 text-[10px] text-slate-400 sm:block">ESC</kbd>
+              <button aria-label="Close search" onClick={() => { setCommandOpen(false); setCommandQuery(""); }} className="ml-2 grid h-10 w-10 place-items-center rounded-xl hover:bg-slate-100"><X size={18}/></button>
             </div>
-            <p className="border-t bg-slate-50 px-4 py-2 text-[10px] text-slate-400">Search covers all completed admin modules · Mock console</p>
+            <div className="admin-scroll overflow-y-auto">
+              <div className="border-b bg-slate-50/70 p-4 sm:p-5">
+                <div className="flex flex-wrap gap-2">
+                  <label className="flex h-10 items-center gap-2 rounded-xl border bg-white px-3 text-xs"><Filter size={14}/><select aria-label="Record type" value={recordType} onChange={(event) => { setRecordType(event.target.value as "All" | SearchRecordType); setRecordStatus("All statuses"); setRecordPage(1); }} className="bg-transparent outline-none"><option>All</option><option>User</option><option>Transaction</option><option>Withdrawal</option><option>Support</option><option>Campaign</option></select></label>
+                  <label className="flex h-10 items-center rounded-xl border bg-white px-3 text-xs"><select aria-label="Record status" value={recordStatus} onChange={(event) => { setRecordStatus(event.target.value); setRecordPage(1); }} className="bg-transparent outline-none"><option>All statuses</option>{recordStatuses.map((status) => <option key={status}>{status}</option>)}</select></label>
+                  <label className="flex h-10 items-center rounded-xl border bg-white px-3 text-xs"><select aria-label="Record priority" value={recordPriority} onChange={(event) => { setRecordPriority(event.target.value); setRecordPage(1); }} className="bg-transparent outline-none"><option>All priorities</option><option>High</option><option>Medium</option><option>Low</option></select></label>
+                  <label className="flex h-10 items-center rounded-xl border bg-white px-3 text-xs"><select aria-label="Sort records" value={recordSort} onChange={(event) => { setRecordSort(event.target.value); setRecordPage(1); }} className="bg-transparent outline-none"><option>Recently updated</option><option>Oldest updated</option><option>Priority: high first</option><option>ID: A to Z</option></select></label>
+                  <button onClick={() => { setRecordType("All"); setRecordStatus("All statuses"); setRecordPriority("All priorities"); setRecordSort("Recently updated"); setRecordPage(1); }} className="h-10 rounded-xl px-3 text-xs font-bold text-violet-600">Reset</button>
+                  <button onClick={() => setShowSaveView(!showSaveView)} className="ml-auto flex h-10 items-center gap-2 rounded-xl border border-violet-200 bg-white px-3 text-xs font-bold text-violet-700"><Pin size={14}/>Save view</button>
+                </div>
+                {showSaveView && <div className="mt-3 flex flex-col gap-2 rounded-xl border border-violet-100 bg-white p-3 sm:flex-row"><input autoFocus value={saveViewName} onChange={(event) => setSaveViewName(event.target.value)} onKeyDown={(event) => event.key === "Enter" && saveCurrentRecordView()} placeholder="Name this filtered view" className="h-10 flex-1 rounded-lg border px-3 text-xs outline-none focus:border-violet-400"/><button disabled={!saveViewName.trim()} onClick={saveCurrentRecordView} className="h-10 rounded-lg bg-violet-600 px-4 text-xs font-bold text-white disabled:opacity-40">Save current filters</button></div>}
+                <div className="mt-3 flex items-center gap-2 overflow-x-auto pb-1"><span className="shrink-0 text-[10px] font-bold uppercase tracking-wider text-slate-400">Saved views</span>{savedRecordViews.map((view) => <button key={view.name} onClick={() => applySavedRecordView(view)} className="shrink-0 rounded-full border bg-white px-3 py-1.5 text-[10px] font-semibold text-slate-600 hover:border-violet-300 hover:text-violet-700">{view.name}</button>)}</div>
+              </div>
+              {commandQuery && commandResults.length > 0 && <div className="border-b p-4 sm:px-5"><p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">Sections</p><div className="flex flex-wrap gap-2">{commandResults.slice(0, 5).map((view) => <button key={view} onClick={() => { navigateTo(view); setCommandOpen(false); setCommandQuery(""); }} className="rounded-xl bg-violet-50 px-3 py-2 text-xs font-bold text-violet-700">Open {view}</button>)}</div></div>}
+              <div className="p-4 sm:p-5">
+                <div className="mb-3 flex items-center justify-between"><div><h2 id="admin-command-title" className="font-bold">Records</h2><p className="text-[11px] text-slate-400">{recordResults.length} mock results across the admin console</p></div><span className="rounded-full bg-violet-50 px-3 py-1 text-[10px] font-bold text-violet-700">Page {Math.min(recordPage, recordPageCount)} of {recordPageCount}</span></div>
+                <div className="grid gap-2">
+                  {pagedRecordResults.map((record) => <button key={record.id} onClick={() => openRecord(record)} className="grid gap-3 rounded-xl border p-3 text-left hover:border-violet-300 hover:bg-violet-50/30 sm:grid-cols-[110px_1fr_90px_90px_90px] sm:items-center">
+                    <span><span className="block text-[9px] font-bold uppercase tracking-wider text-slate-400">{record.type}</span><span className="font-mono text-[11px] font-bold text-violet-600">{record.id}</span></span>
+                    <span className="min-w-0"><b className="block truncate text-xs text-slate-800">{record.title}</b><span className="block truncate text-[10px] text-slate-400">{record.subtitle}</span></span>
+                    <span className={`w-fit rounded-full px-2 py-1 text-[9px] font-bold ${tone(record.status)}`}>{record.status}</span>
+                    <span className={`w-fit rounded-full px-2 py-1 text-[9px] font-bold ${record.priority === "High" ? "bg-rose-50 text-rose-700" : record.priority === "Medium" ? "bg-amber-50 text-amber-700" : "bg-emerald-50 text-emerald-700"}`}>{record.priority}</span>
+                    <span className="text-[10px] text-slate-400 sm:text-right">{record.updated}</span>
+                  </button>)}
+                  {pagedRecordResults.length === 0 && <div className="rounded-xl border border-dashed p-10 text-center"><Search size={28} className="mx-auto text-slate-300"/><p className="mt-3 text-sm font-bold">No records found</p><p className="mt-1 text-xs text-slate-400">Change the search or reset the filters.</p></div>}
+                </div>
+                <div className="mt-4 flex items-center justify-between"><p className="text-[10px] text-slate-400">Mock records only · Backend search will replace this index</p><div className="flex gap-2"><button disabled={recordPage <= 1} onClick={() => setRecordPage((page) => Math.max(1, page - 1))} className="grid h-9 w-9 place-items-center rounded-lg border disabled:opacity-30" aria-label="Previous results page"><ChevronLeft size={15}/></button><button disabled={recordPage >= recordPageCount} onClick={() => setRecordPage((page) => Math.min(recordPageCount, page + 1))} className="grid h-9 w-9 place-items-center rounded-lg border disabled:opacity-30" aria-label="Next results page"><ChevronRight size={15}/></button></div></div>
+              </div>
+            </div>
           </section>
+        </div>
+      )}
+      {selectedRecord && (
+        <div className="fixed inset-0 z-[110] flex justify-end bg-slate-950/45" onMouseDown={(event) => event.target === event.currentTarget && closeRecord()}>
+          <aside role="dialog" aria-modal="true" aria-labelledby="record-detail-title" className="admin-scroll h-full w-full max-w-xl overflow-y-auto bg-[#f7f8fc] shadow-2xl">
+            <div className="sticky top-0 z-10 flex items-center border-b bg-white p-5"><div><p className="text-[10px] font-bold uppercase tracking-wider text-violet-600">{selectedRecord.type} · {selectedRecord.id}</p><h2 id="record-detail-title" className="mt-1 text-lg font-bold">{selectedRecord.title}</h2></div><button aria-label="Close record details" onClick={closeRecord} className="ml-auto grid h-10 w-10 place-items-center rounded-xl border"><X size={18}/></button></div>
+            <div className="space-y-4 p-5">
+              <section className="rounded-2xl border bg-white p-5"><div className="flex flex-wrap items-center gap-2"><span className={`rounded-full px-3 py-1 text-[10px] font-bold ${tone(selectedRecord.status)}`}>{selectedRecord.status}</span><span className={`rounded-full px-3 py-1 text-[10px] font-bold ${selectedRecord.priority === "High" ? "bg-rose-50 text-rose-700" : selectedRecord.priority === "Medium" ? "bg-amber-50 text-amber-700" : "bg-emerald-50 text-emerald-700"}`}>{selectedRecord.priority} priority</span><span className="ml-auto text-[10px] text-slate-400">Updated {selectedRecord.updated}</span></div><p className="mt-4 text-sm text-slate-600">{selectedRecord.subtitle}</p><div className="mt-5 grid gap-3 sm:grid-cols-2">{selectedRecord.details.map(([label, value]) => <div key={label} className="rounded-xl bg-slate-50 p-3"><p className="text-[10px] uppercase tracking-wider text-slate-400">{label}</p><b className="mt-1 block text-xs">{value}</b></div>)}</div></section>
+              <section className="rounded-2xl border bg-white p-5"><h3 className="font-bold">Record link</h3><p className="mt-1 text-xs leading-5 text-slate-500">This detail has its own URL. Copy it to reopen or share the same mock record with an authorized administrator.</p><button onClick={() => { navigator.clipboard?.writeText(window.location.href); action("Record link copied"); }} className="mt-4 flex h-10 items-center gap-2 rounded-xl border px-4 text-xs font-bold text-violet-700"><Copy size={15}/>Copy bookmarkable link</button></section>
+              <section className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-xs leading-5 text-amber-900"><b>Mock record:</b> this detail page does not read or change production data. Permissions and server-side record loading will be connected during backend integration.</section>
+            </div>
+          </aside>
         </div>
       )}
       <aside className={`fixed inset-y-0 left-0 z-50 flex w-[280px] flex-col bg-[#10172a] text-white transition-all duration-300 ${collapsed ? "lg:w-[88px]" : "lg:w-[260px]"} ${menuOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}>
@@ -3094,12 +3259,12 @@ export default function AdminDashboardPage() {
               <ChevronRight size={19} />
             </button>
           </div>
-          <button onClick={() => setCommandOpen(true)} className="ml-2 grid h-11 w-11 place-items-center rounded-xl text-slate-500 hover:bg-slate-100 md:hidden" aria-label="Search admin sections">
+          <button onClick={() => { setCommandOpen(true); setRecordPage(1); }} className="ml-2 grid h-11 w-11 place-items-center rounded-xl text-slate-500 hover:bg-slate-100 md:hidden" aria-label="Search all admin records">
             <Search size={19} />
           </button>
-          <button onClick={() => setCommandOpen(true)} className="ml-3 hidden h-11 w-full max-w-[440px] items-center gap-3 rounded-xl bg-[#f5f6fa] px-4 text-left md:flex" aria-label="Search admin sections">
+          <button onClick={() => { setCommandOpen(true); setRecordPage(1); }} className="ml-3 hidden h-11 w-full max-w-[440px] items-center gap-3 rounded-xl bg-[#f5f6fa] px-4 text-left md:flex" aria-label="Search all admin records">
             <Search size={18} className="text-slate-400" />
-            <span className="w-full text-sm text-slate-400">Search admin sections…</span>
+            <span className="w-full text-sm text-slate-400">Search users, IDs, tickets, campaigns…</span>
             <kbd className="rounded border border-slate-200 bg-white px-2 py-1 text-[10px] text-slate-400">⌘ K</kbd>
           </button>
           <div className="ml-auto flex items-center gap-2">
@@ -3207,9 +3372,10 @@ export default function AdminDashboardPage() {
                   </div>
                 </div>
 
-                <section aria-label="Personal admin workspace" className="mb-6 grid gap-4 lg:grid-cols-2">
+                <section aria-label="Personal admin workspace" className="mb-6 grid gap-4 lg:grid-cols-3">
                   <article className="rounded-2xl border border-[#e7e9f1] bg-white p-5 shadow-sm"><div className="flex items-center"><div><h2 className="font-bold">Pinned sections</h2><p className="mt-1 text-xs text-slate-500">Keep frequent work one tap away</p></div><Pin size={17} className="ml-auto text-violet-600"/></div><div className="mt-4 flex flex-wrap gap-2">{pinnedViews.length ? pinnedViews.map((view) => <button key={view} onClick={() => navigateTo(view)} className="flex h-9 items-center gap-2 rounded-xl bg-violet-50 px-3 text-xs font-bold text-violet-700 hover:bg-violet-100">{view}<ChevronRight size={13}/></button>) : <p className="text-xs text-slate-400">Pin any section from its breadcrumb.</p>}</div></article>
                   <article className="rounded-2xl border border-[#e7e9f1] bg-white p-5 shadow-sm"><div className="flex items-center"><div><h2 className="font-bold">Recently viewed</h2><p className="mt-1 text-xs text-slate-500">Return to your latest admin work</p></div><Clock3 size={17} className="ml-auto text-slate-400"/></div><div className="mt-4 flex flex-wrap gap-2">{recentViews.filter((view) => view !== "Dashboard").length ? recentViews.filter((view) => view !== "Dashboard").map((view) => <button key={view} onClick={() => navigateTo(view)} className="flex h-9 items-center gap-2 rounded-xl border px-3 text-xs font-semibold text-slate-600 hover:border-violet-300">{view}<ChevronRight size={13}/></button>) : <p className="text-xs text-slate-400">Sections you open will appear here.</p>}</div></article>
+                  <article className="rounded-2xl border border-[#e7e9f1] bg-white p-5 shadow-sm"><div className="flex items-center"><div><h2 className="font-bold">Saved record views</h2><p className="mt-1 text-xs text-slate-500">Open frequently used filtered queues</p></div><Search size={17} className="ml-auto text-violet-600"/></div><div className="mt-4 flex flex-wrap gap-2">{savedRecordViews.slice(0, 3).map((view) => <button key={view.name} onClick={() => { applySavedRecordView(view); setCommandOpen(true); }} className="flex h-9 items-center gap-2 rounded-xl border border-violet-100 bg-violet-50 px-3 text-xs font-bold text-violet-700 hover:bg-violet-100">{view.name}<ChevronRight size={13}/></button>)}</div></article>
                 </section>
 
                 <section aria-label="Key performance indicators" className="grid gap-4 sm:grid-cols-2 2xl:grid-cols-4">
@@ -3492,7 +3658,7 @@ export default function AdminDashboardPage() {
             )}
           </div>
           <footer className="mx-auto mt-8 flex max-w-[1500px] flex-col gap-2 border-t border-slate-200 py-5 text-[11px] text-slate-400 sm:flex-row sm:items-center sm:justify-between">
-            <span>Glonni Ads Admin · UX Completion Step 1</span>
+            <span>Glonni Ads Admin · UX Completion Step 2</span>
             <span>Mock data only · No live providers, payments, messages or account changes</span>
           </footer>
         </main>
