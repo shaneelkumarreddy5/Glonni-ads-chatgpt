@@ -3861,7 +3861,7 @@ export default function AdminDashboardPage() {
             )}
           </div>
           <footer className="mx-auto mt-8 flex max-w-[1500px] flex-col gap-2 border-t border-slate-200 py-5 text-[11px] text-slate-400 sm:flex-row sm:items-center sm:justify-between">
-            <span>Glonni Ads Admin · UX Completion Step 4</span>
+            <span>Glonni Ads Admin · UX Completion Step 5</span>
             <span>Mock data only · No live providers, payments, messages or account changes</span>
           </footer>
         </main>
