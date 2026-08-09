@@ -2,10 +2,27 @@
 /* eslint-disable @typescript-eslint/no-unused-vars -- compact mock document cards retain map indices for future ordering */
 
 import { Activity, ArrowDownRight, ArrowUpRight, BadgeIndianRupee, Bell, CalendarDays, CheckCircle2, ChevronDown, CircleAlert, Clock3, Download, FileText, Gamepad2, Gift, HandCoins, Headphones, LayoutDashboard, Menu, MonitorPlay, Moon, MoreHorizontal, PackageCheck, PanelLeftClose, RefreshCw, Search, Settings, ShieldAlert, ShieldCheck, ShoppingBag, SlidersHorizontal, Store, TrendingUp, UserCheck, Users, WalletCards, X, Ban, ChevronLeft, ChevronRight, Copy, Eye, Filter, Mail, MapPin, Phone, RotateCcw, Smartphone, UserRound, UserX, Wifi } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 type NavItem = { label: string; icon: typeof LayoutDashboard; badge?: string };
 type NavGroup = { label?: string; items: NavItem[] };
+type AdminView = "Dashboard" | "Users" | "Wallet & Transactions" | "Withdrawals" | "KYC Verification" | "Fraud & Risk";
+
+const adminViewSlugs: Record<AdminView, string> = {
+  Dashboard: "dashboard",
+  Users: "users",
+  "Wallet & Transactions": "wallet-transactions",
+  Withdrawals: "withdrawals",
+  "KYC Verification": "kyc-verification",
+  "Fraud & Risk": "fraud-risk",
+};
+
+const adminSlugViews = Object.fromEntries(Object.entries(adminViewSlugs).map(([view, slug]) => [slug, view])) as Record<string, AdminView>;
+
+function getAdminViewFromUrl(): AdminView {
+  if (typeof window === "undefined") return "Dashboard";
+  return adminSlugViews[new URL(window.location.href).searchParams.get("section") ?? ""] ?? "Dashboard";
+}
 
 const navGroups: NavGroup[] = [
   {
@@ -2312,7 +2329,9 @@ function MiniLine({ values }: { values: number[] }) {
 }
 
 export default function AdminDashboardPage() {
-  const [activeView, setActiveView] = useState<"Dashboard" | "Users" | "Wallet & Transactions" | "Withdrawals" | "KYC Verification" | "Fraud & Risk">("Dashboard");
+  const [activeView, setActiveView] = useState<AdminView>("Dashboard");
+  const [historyPosition, setHistoryPosition] = useState(0);
+  const [historyLength, setHistoryLength] = useState(1);
   const [menuOpen, setMenuOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const [noticeOpen, setNoticeOpen] = useState(false);
@@ -2324,6 +2343,49 @@ export default function AdminDashboardPage() {
     setToast(message);
     window.setTimeout(() => setToast(""), 2400);
   };
+
+  const syncHistoryControls = useCallback(() => {
+    const position = Number(window.history.state?.adminPosition ?? 0);
+    const length = Number(window.sessionStorage.getItem("glonni-admin-history-length") ?? position + 1);
+    setHistoryPosition(position);
+    setHistoryLength(Math.max(length, position + 1));
+  }, []);
+
+  const navigateTo = useCallback((view: AdminView, replace = false) => {
+    const url = new URL(window.location.href);
+    url.searchParams.set("section", adminViewSlugs[view]);
+    const currentPosition = Number(window.history.state?.adminPosition ?? 0);
+    const nextPosition = replace ? currentPosition : currentPosition + 1;
+    const nextLength = replace ? Math.max(Number(window.sessionStorage.getItem("glonni-admin-history-length") ?? 1), nextPosition + 1) : nextPosition + 1;
+    window.history[replace ? "replaceState" : "pushState"]({ ...window.history.state, adminView: view, adminPosition: nextPosition }, "", url);
+    window.sessionStorage.setItem("glonni-admin-history-length", String(nextLength));
+    setActiveView(view);
+    setHistoryPosition(nextPosition);
+    setHistoryLength(nextLength);
+    setMenuOpen(false);
+    setNoticeOpen(false);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, []);
+
+  useEffect(() => {
+    const initialView = getAdminViewFromUrl();
+    const initialPosition = Number(window.history.state?.adminPosition ?? 0);
+    const initialUrl = new URL(window.location.href);
+    initialUrl.searchParams.set("section", adminViewSlugs[initialView]);
+    window.history.replaceState({ ...window.history.state, adminView: initialView, adminPosition: initialPosition }, "", initialUrl);
+    setActiveView(initialView);
+    syncHistoryControls();
+
+    const handlePopState = () => {
+      setActiveView(getAdminViewFromUrl());
+      setMenuOpen(false);
+      setNoticeOpen(false);
+      syncHistoryControls();
+      window.scrollTo({ top: 0, behavior: "auto" });
+    };
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, [syncHistoryControls]);
 
   return (
     <div className="admin-root min-h-screen bg-[#f7f8fc] text-[#172033]">
@@ -2362,8 +2424,9 @@ export default function AdminDashboardPage() {
                       title={collapsed ? item.label : undefined}
                       onClick={() => {
                         if (enabled) {
-                          setActiveView(item.label as typeof activeView);
-                          setMenuOpen(false);
+                          const view = item.label as AdminView;
+                          if (view !== activeView) navigateTo(view);
+                          else setMenuOpen(false);
                         } else action(`${item.label} will be built in its planned step`);
                       }}
                       className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-[13px] font-medium ${active ? "bg-gradient-to-r from-[#7748ee] to-[#5b27d8] text-white shadow-lg shadow-purple-950/25" : "text-slate-300 hover:bg-white/5 hover:text-white"}`}
@@ -2403,6 +2466,14 @@ export default function AdminDashboardPage() {
           <button aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"} className="hidden h-11 w-11 place-items-center rounded-xl text-slate-600 hover:bg-slate-100 lg:grid" onClick={() => setCollapsed(!collapsed)}>
             <PanelLeftClose size={21} className={collapsed ? "rotate-180" : ""} />
           </button>
+          <div className="ml-2 hidden items-center gap-1 sm:flex" aria-label="Admin page history">
+            <button aria-label="Go to previous admin section" title="Back" disabled={historyPosition <= 0} onClick={() => window.history.back()} className="grid h-10 w-10 place-items-center rounded-xl text-slate-500 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-30">
+              <ChevronLeft size={19} />
+            </button>
+            <button aria-label="Go to next admin section" title="Forward" disabled={historyPosition >= historyLength - 1} onClick={() => window.history.forward()} className="grid h-10 w-10 place-items-center rounded-xl text-slate-500 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-30">
+              <ChevronRight size={19} />
+            </button>
+          </div>
           <label className="ml-3 hidden h-11 w-full max-w-[440px] items-center gap-3 rounded-xl bg-[#f5f6fa] px-4 md:flex">
             <Search size={18} className="text-slate-400" />
             <span className="sr-only">Search admin panel</span>
