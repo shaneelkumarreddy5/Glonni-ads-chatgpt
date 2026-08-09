@@ -22,6 +22,15 @@ type SearchRecord = {
 };
 type SavedRecordView = { name: string; type: "All" | SearchRecordType; status: string; priority: string; sort: string };
 type ReliabilityState = "Ready" | "Loading" | "Empty" | "Error" | "Offline";
+type AdminRole = "Super Admin" | "Finance Admin" | "Support Admin" | "Content Admin" | "Operations Admin" | "Security Admin";
+type RoleWorkspace = {
+  description: string;
+  focus: string;
+  views: AdminView[];
+  defaultPins: AdminView[];
+  priorities: { label: string; detail: string; view: AdminView; urgency: "Urgent" | "High" | "Medium" }[];
+  permissions: { label: string; level: "Full action" | "Guarded action" | "View only" | "Hidden" }[];
+};
 
 const adminViewSlugs: Record<AdminView, string> = {
   Dashboard: "dashboard",
@@ -131,6 +140,81 @@ const navGroups: NavGroup[] = [
   },
 ];
 
+const roleWorkspaces: Record<AdminRole, RoleWorkspace> = {
+  "Super Admin": {
+    description: "Platform-wide oversight with protected access to every admin module.",
+    focus: "Platform health, escalations and cross-team decisions",
+    views: adminViews,
+    defaultPins: ["Withdrawals", "KYC Verification", "Support Centre"],
+    priorities: [
+      { label: "3 high-risk accounts need review", detail: "Security and fraud escalation", view: "Fraud & Risk", urgency: "Urgent" },
+      { label: "8 withdrawals await approval", detail: "₹74,260 requested", view: "Withdrawals", urgency: "High" },
+      { label: "2 reconciliation exceptions remain", detail: "Period close needs attention", view: "Reports", urgency: "High" },
+    ],
+    permissions: [{ label: "Platform configuration", level: "Guarded action" }, { label: "Financial decisions", level: "Guarded action" }, { label: "Identity decisions", level: "Guarded action" }, { label: "Audit evidence", level: "Full action" }],
+  },
+  "Finance Admin": {
+    description: "Financial operations workspace with sensitive user identity fields minimized.",
+    focus: "Wallet integrity, payouts and reconciliation",
+    views: ["Dashboard", "Users", "Wallet & Transactions", "Withdrawals", "Fraud & Risk", "Shop & Earn", "Stores & Links", "Reports", "Activity Logs"],
+    defaultPins: ["Withdrawals", "Wallet & Transactions", "Reports"],
+    priorities: [
+      { label: "8 withdrawals await approval", detail: "₹74,260 requested", view: "Withdrawals", urgency: "Urgent" },
+      { label: "2 reconciliation exceptions remain", detail: "Provider statements unmatched", view: "Reports", urgency: "High" },
+      { label: "1 wallet velocity hold", detail: "Review before payout release", view: "Fraud & Risk", urgency: "High" },
+    ],
+    permissions: [{ label: "Wallet & payouts", level: "Guarded action" }, { label: "Reconciliation", level: "Full action" }, { label: "User identity", level: "View only" }, { label: "Security settings", level: "Hidden" }],
+  },
+  "Support Admin": {
+    description: "Customer-resolution workspace with restricted financial and security actions.",
+    focus: "SLA recovery, customer resolution and escalation",
+    views: ["Dashboard", "Users", "Wallet & Transactions", "Withdrawals", "KYC Verification", "Ad Networks", "Surveys", "App Install Offers", "Games", "Shop & Earn", "Referrals", "Support Centre", "Activity Logs"],
+    defaultPins: ["Support Centre", "Users", "Wallet & Transactions"],
+    priorities: [
+      { label: "2 support tickets breached SLA", detail: "Immediate response required", view: "Support Centre", urgency: "Urgent" },
+      { label: "5 missing-reward cases are open", detail: "Games, surveys and installs", view: "Support Centre", urgency: "High" },
+      { label: "3 KYC guidance requests", detail: "Customer follow-up pending", view: "KYC Verification", urgency: "Medium" },
+    ],
+    permissions: [{ label: "Support replies", level: "Full action" }, { label: "Reward investigation", level: "Guarded action" }, { label: "Payout approval", level: "Hidden" }, { label: "KYC decision", level: "View only" }],
+  },
+  "Content Admin": {
+    description: "Publishing and campaign workspace without access to financial or identity decisions.",
+    focus: "Content quality, offer accuracy and publishing readiness",
+    views: ["Dashboard", "Ad Networks", "Surveys", "App Install Offers", "Games", "Shop & Earn", "Stores & Links", "Referrals", "Content", "Support Centre", "Activity Logs"],
+    defaultPins: ["Content", "Stores & Links", "Shop & Earn"],
+    priorities: [
+      { label: "4 content briefs await approval", detail: "Publishing queue", view: "Content", urgency: "High" },
+      { label: "1 affiliate redirect warning", detail: "Destination review required", view: "Stores & Links", urgency: "Urgent" },
+      { label: "3 campaigns expire within 10 days", detail: "Refresh offer copy", view: "Shop & Earn", urgency: "Medium" },
+    ],
+    permissions: [{ label: "Content publishing", level: "Guarded action" }, { label: "Campaign copy", level: "Full action" }, { label: "Financial records", level: "Hidden" }, { label: "User identity", level: "Hidden" }],
+  },
+  "Operations Admin": {
+    description: "Offer-delivery and partner-health workspace with escalation-only finance access.",
+    focus: "Provider delivery, campaigns and partner operations",
+    views: ["Dashboard", "Users", "Fraud & Risk", "Ad Networks", "Surveys", "App Install Offers", "Games", "Shop & Earn", "Stores & Links", "Referrals", "Content", "Support Centre", "Reports", "Activity Logs"],
+    defaultPins: ["Ad Networks", "Stores & Links", "Reports"],
+    priorities: [
+      { label: "Offerwall success rate is 91.8%", detail: "Below operating target", view: "App Install Offers", urgency: "High" },
+      { label: "1 tracking link has a redirect mismatch", detail: "Attribution risk", view: "Stores & Links", urgency: "Urgent" },
+      { label: "3 referral rules need review", detail: "Fraud controls changed", view: "Referrals", urgency: "Medium" },
+    ],
+    permissions: [{ label: "Provider configuration", level: "Guarded action" }, { label: "Campaign operations", level: "Full action" }, { label: "Financial approval", level: "Hidden" }, { label: "User support", level: "View only" }],
+  },
+  "Security Admin": {
+    description: "Risk, access and audit workspace with financial amounts redacted by default.",
+    focus: "Threat response, access control and evidence integrity",
+    views: ["Dashboard", "Users", "Withdrawals", "KYC Verification", "Fraud & Risk", "Support Centre", "Reports", "Settings & Security", "Activity Logs"],
+    defaultPins: ["Fraud & Risk", "Settings & Security", "Activity Logs"],
+    priorities: [
+      { label: "3 high-risk accounts need review", detail: "Device duplication signals", view: "Fraud & Risk", urgency: "Urgent" },
+      { label: "1 blocked MFA event", detail: "Unknown Android device", view: "Activity Logs", urgency: "High" },
+      { label: "2 privileged sessions near expiry", detail: "Session policy review", view: "Settings & Security", urgency: "Medium" },
+    ],
+    permissions: [{ label: "Risk restrictions", level: "Guarded action" }, { label: "Admin access policy", level: "Guarded action" }, { label: "Audit evidence", level: "Full action" }, { label: "Payout amounts", level: "View only" }],
+  },
+};
+
 const searchableRecords: SearchRecord[] = [
   { id: "GLN-10248", type: "User", title: "Aarav Mehta", subtitle: "aarav.mehta@example.com · Hyderabad", status: "Active", priority: "Low", updated: "2 min ago", updatedOrder: 1, view: "Users", details: [["Phone", "+91 98765 43210"], ["KYC", "Verified"], ["Wallet", "₹684.50"], ["Risk", "Low"]] },
   { id: "GLN-10247", type: "User", title: "Priya Reddy", subtitle: "priya.reddy@example.com · Nellore", status: "Review", priority: "Medium", updated: "12 min ago", updatedOrder: 2, view: "Users", details: [["Phone", "+91 91234 56780"], ["KYC", "Pending"], ["Wallet", "₹524.20"], ["Risk", "Low"]] },
@@ -197,6 +281,40 @@ const metrics = [
     positive: false,
   },
 ];
+
+const roleMetricSets: Record<AdminRole, typeof metrics> = {
+  "Super Admin": metrics,
+  "Finance Admin": [
+    { label: "Wallet liabilities", value: "₹5,80,680", change: "+4.1%", note: "approved + pending mock", icon: WalletCards, bg: "bg-[#eee9ff]", color: "text-[#7046df]", positive: true },
+    { label: "Provider receivables", value: "₹1,48,240", change: "2 exceptions", note: "statement matching", icon: TrendingUp, bg: "bg-[#e5f8f1]", color: "text-[#119568]", positive: true },
+    { label: "Pending withdrawals", value: "₹74,260", change: "8 requests", note: "guarded approval queue", icon: HandCoins, bg: "bg-[#fff1dc]", color: "text-[#d98714]", positive: false },
+    { label: "Reconciliation breaks", value: "2", change: "−3", note: "since last mock close", icon: CircleAlert, bg: "bg-[#ffe8ec]", color: "text-[#df5269]", positive: true },
+  ],
+  "Support Admin": [
+    { label: "Open tickets", value: "5", change: "2 breached", note: "response target", icon: Headphones, bg: "bg-[#eee9ff]", color: "text-[#7046df]", positive: false },
+    { label: "Resolved today", value: "84", change: "+11.2%", note: "mock resolutions", icon: CheckCircle2, bg: "bg-[#e5f8f1]", color: "text-[#119568]", positive: true },
+    { label: "AI draft acceptance", value: "91%", change: "+2.4%", note: "human-reviewed drafts", icon: Bot, bg: "bg-[#fff1dc]", color: "text-[#d98714]", positive: true },
+    { label: "Escalations", value: "7", change: "3 financial", note: "protected queues", icon: ShieldAlert, bg: "bg-[#ffe8ec]", color: "text-[#df5269]", positive: false },
+  ],
+  "Content Admin": [
+    { label: "Draft briefs", value: "12", change: "4 due", note: "publishing queue", icon: FileText, bg: "bg-[#eee9ff]", color: "text-[#7046df]", positive: false },
+    { label: "Published today", value: "18", change: "+6", note: "mock content items", icon: CheckCircle2, bg: "bg-[#e5f8f1]", color: "text-[#119568]", positive: true },
+    { label: "Offer accuracy", value: "97.4%", change: "+1.2%", note: "QA sample", icon: ShieldCheck, bg: "bg-[#fff1dc]", color: "text-[#d98714]", positive: true },
+    { label: "Link warnings", value: "1", change: "Urgent", note: "redirect mismatch", icon: Link2, bg: "bg-[#ffe8ec]", color: "text-[#df5269]", positive: false },
+  ],
+  "Operations Admin": [
+    { label: "Active providers", value: "8", change: "7 healthy", note: "mock integrations", icon: Store, bg: "bg-[#eee9ff]", color: "text-[#7046df]", positive: true },
+    { label: "Delivery success", value: "95.3%", change: "+0.8%", note: "weighted average", icon: TrendingUp, bg: "bg-[#e5f8f1]", color: "text-[#119568]", positive: true },
+    { label: "Active campaigns", value: "24", change: "3 expiring", note: "within 10 days", icon: Gift, bg: "bg-[#fff1dc]", color: "text-[#d98714]", positive: false },
+    { label: "Provider incidents", value: "2", change: "1 urgent", note: "tracking and delivery", icon: CircleAlert, bg: "bg-[#ffe8ec]", color: "text-[#df5269]", positive: false },
+  ],
+  "Security Admin": [
+    { label: "High-risk signals", value: "3", change: "Needs review", note: "device and velocity", icon: ShieldAlert, bg: "bg-[#ffe8ec]", color: "text-[#df5269]", positive: false },
+    { label: "Protected actions", value: "42", change: "100% logged", note: "today", icon: ShieldCheck, bg: "bg-[#e5f8f1]", color: "text-[#119568]", positive: true },
+    { label: "Privileged sessions", value: "6", change: "2 expiring", note: "mock sessions", icon: LockKeyhole, bg: "bg-[#eee9ff]", color: "text-[#7046df]", positive: false },
+    { label: "Integrity breaks", value: "0", change: "Verified", note: "audit chain", icon: Activity, bg: "bg-[#fff1dc]", color: "text-[#d98714]", positive: true },
+  ],
+};
 
 const transactions = [
   {
@@ -3001,6 +3119,7 @@ function ActivityLogsManagement({ action }: { action: (message: string) => void 
 
 export default function AdminDashboardPage() {
   const [activeView, setActiveView] = useState<AdminView>("Dashboard");
+  const [currentRole, setCurrentRole] = useState<AdminRole>("Super Admin");
   const [historyPosition, setHistoryPosition] = useState(0);
   const [historyLength, setHistoryLength] = useState(1);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -3041,18 +3160,20 @@ export default function AdminDashboardPage() {
     { id: "support", title: "5 support tickets are open", detail: "2 are beyond response target", view: "Support Centre" },
     { id: "reports", title: "Reconciliation period needs attention", detail: "2 exceptions remain unmatched", view: "Reports" },
   ];
-  const unreadCount = notifications.filter((notification) => !readNotifications.includes(notification.id)).length;
+  const workspace = roleWorkspaces[currentRole];
+  const roleNotifications = notifications.filter((notification) => workspace.views.includes(notification.view));
+  const unreadCount = roleNotifications.filter((notification) => !readNotifications.includes(notification.id)).length;
   const filteredTransactions = useMemo(() => (transactionFilter === "All" ? transactions : transactions.filter((t) => t.status === transactionFilter)), [transactionFilter]);
   const commandResults = useMemo(() => {
     const query = commandQuery.trim().toLowerCase();
-    return adminViews.filter((view) => !query || view.toLowerCase().includes(query));
-  }, [commandQuery]);
+    return workspace.views.filter((view) => !query || view.toLowerCase().includes(query));
+  }, [commandQuery, workspace.views]);
   const recordStatuses = useMemo(() => Array.from(new Set(searchableRecords.filter((record) => recordType === "All" || record.type === recordType).map((record) => record.status))).sort(), [recordType]);
   const recordResults = useMemo(() => {
     const query = commandQuery.trim().toLowerCase();
     const matches = searchableRecords.filter((record) => {
       const searchable = `${record.id} ${record.type} ${record.title} ${record.subtitle} ${record.status} ${record.details.flat().join(" ")}`.toLowerCase();
-      return (!query || searchable.includes(query)) &&
+      return workspace.views.includes(record.view) && (!query || searchable.includes(query)) &&
         (recordType === "All" || record.type === recordType) &&
         (recordStatus === "All statuses" || record.status === recordStatus) &&
         (recordPriority === "All priorities" || record.priority === recordPriority);
@@ -3063,7 +3184,7 @@ export default function AdminDashboardPage() {
       if (recordSort === "ID: A to Z") return a.id.localeCompare(b.id);
       return a.updatedOrder - b.updatedOrder;
     });
-  }, [commandQuery, recordPriority, recordSort, recordStatus, recordType]);
+  }, [commandQuery, recordPriority, recordSort, recordStatus, recordType, workspace.views]);
   const recordPageSize = 6;
   const recordPageCount = Math.max(1, Math.ceil(recordResults.length / recordPageSize));
   const pagedRecordResults = recordResults.slice((Math.min(recordPage, recordPageCount) - 1) * recordPageSize, Math.min(recordPage, recordPageCount) * recordPageSize);
@@ -3077,10 +3198,14 @@ export default function AdminDashboardPage() {
   }, []);
 
   const togglePinnedView = (view: AdminView) => {
+    if (!workspace.views.includes(view)) {
+      action(`${currentRole} cannot pin this restricted section`);
+      return;
+    }
     const isPinned = pinnedViews.includes(view);
     setPinnedViews((current) => {
       const next = isPinned ? current.filter((item) => item !== view) : [...current, view];
-      window.localStorage.setItem("glonni-admin-pinned-views", JSON.stringify(next));
+      window.localStorage.setItem(`glonni-admin-pinned-views-${currentRole}`, JSON.stringify(next));
       return next;
     });
     action(isPinned ? `${view} removed from pinned sections` : `${view} pinned to your workspace`);
@@ -3095,6 +3220,11 @@ export default function AdminDashboardPage() {
 
   const dirtyFormRef = useRef(false);
   const navigateTo = useCallback((view: AdminView, replace = false, discardDraft = false) => {
+    if (!roleWorkspaces[currentRole].views.includes(view)) {
+      action(`${currentRole} does not have access to ${view}`);
+      setMenuOpen(false);
+      return;
+    }
     if (dirtyFormRef.current && view !== activeView && !discardDraft) {
       setPendingNavigation(view);
       return;
@@ -3115,9 +3245,13 @@ export default function AdminDashboardPage() {
     setMenuOpen(false);
     setNoticeOpen(false);
     window.scrollTo({ top: 0, behavior: "smooth" });
-  }, [activeView, rememberView]);
+  }, [activeView, currentRole, rememberView]);
 
   const openRecord = useCallback((record: SearchRecord) => {
+    if (!roleWorkspaces[currentRole].views.includes(record.view)) {
+      action(`${currentRole} cannot open this restricted record`);
+      return;
+    }
     const url = new URL(window.location.href);
     url.searchParams.set("section", adminViewSlugs[record.view]);
     url.searchParams.set("record", record.id);
@@ -3134,7 +3268,28 @@ export default function AdminDashboardPage() {
     setCommandQuery("");
     setMenuOpen(false);
     window.scrollTo({ top: 0, behavior: "smooth" });
-  }, [rememberView]);
+  }, [currentRole, rememberView]);
+
+  const changeRole = (role: AdminRole) => {
+    const nextWorkspace = roleWorkspaces[role];
+    setCurrentRole(role);
+    window.localStorage.setItem("glonni-admin-workspace-role", role);
+    const storedPins = window.localStorage.getItem(`glonni-admin-pinned-views-${role}`);
+    if (storedPins) {
+      try {
+        const parsed = JSON.parse(storedPins) as AdminView[];
+        setPinnedViews(parsed.filter((view) => nextWorkspace.views.includes(view)));
+      } catch {
+        setPinnedViews(nextWorkspace.defaultPins);
+      }
+    } else setPinnedViews(nextWorkspace.defaultPins);
+    setRecentViews((current) => current.filter((view) => nextWorkspace.views.includes(view)));
+    setProfileOpen(false);
+    setNoticeOpen(false);
+    setCommandOpen(false);
+    if (!nextWorkspace.views.includes(activeView)) navigateTo("Dashboard", false, true);
+    action(`Previewing ${role} workspace`);
+  };
 
   const closeRecord = useCallback(() => {
     const url = new URL(window.location.href);
@@ -3202,13 +3357,19 @@ export default function AdminDashboardPage() {
   }, [rememberView, syncHistoryControls]);
 
   useEffect(() => {
-    const storedPins = window.localStorage.getItem("glonni-admin-pinned-views");
-    if (!storedPins) return;
+    const storedRole = window.localStorage.getItem("glonni-admin-workspace-role") as AdminRole | null;
+    const role = storedRole && roleWorkspaces[storedRole] ? storedRole : "Super Admin";
+    setCurrentRole(role);
+    const storedPins = window.localStorage.getItem(`glonni-admin-pinned-views-${role}`) ?? window.localStorage.getItem("glonni-admin-pinned-views");
+    if (!storedPins) {
+      setPinnedViews(roleWorkspaces[role].defaultPins);
+      return;
+    }
     try {
       const parsed = JSON.parse(storedPins) as AdminView[];
-      setPinnedViews(parsed.filter((view) => adminViews.includes(view)));
+      setPinnedViews(parsed.filter((view) => roleWorkspaces[role].views.includes(view)));
     } catch {
-      window.localStorage.removeItem("glonni-admin-pinned-views");
+      setPinnedViews(roleWorkspaces[role].defaultPins);
     }
   }, []);
 
@@ -3222,6 +3383,17 @@ export default function AdminDashboardPage() {
       window.localStorage.removeItem("glonni-admin-saved-record-views");
     }
   }, []);
+
+  useEffect(() => {
+    if (workspace.views.includes(activeView)) return;
+    const url = new URL(window.location.href);
+    url.searchParams.set("section", adminViewSlugs.Dashboard);
+    url.searchParams.delete("record");
+    window.history.replaceState({ ...window.history.state, adminView: "Dashboard" }, "", url);
+    setActiveView("Dashboard");
+    setSelectedRecord(null);
+    action(`${currentRole} workspace opened; the previous section is restricted`);
+  }, [activeView, currentRole, workspace.views]);
 
   useEffect(() => {
     const handleKeyboard = (event: KeyboardEvent) => {
@@ -3384,6 +3556,7 @@ export default function AdminDashboardPage() {
               <div className="space-y-1">
                 {group.items.map((item) => {
                   const enabled = adminViews.includes(item.label as AdminView);
+                  const authorized = enabled && workspace.views.includes(item.label as AdminView);
                   const active = item.label === activeView;
                   const Icon = item.icon;
                   return (
@@ -3392,26 +3565,26 @@ export default function AdminDashboardPage() {
                       href={enabled ? `/admin?section=${adminViewSlugs[item.label as AdminView]}` : undefined}
                       title={collapsed ? item.label : undefined}
                       aria-current={active ? "page" : undefined}
-                      aria-disabled={!enabled}
+                      aria-disabled={!enabled || !authorized}
                       onClick={(event) => {
-                        if (enabled) {
+                        if (enabled && authorized) {
                           event.preventDefault();
                           const view = item.label as AdminView;
                           if (view !== activeView) navigateTo(view);
                           else setMenuOpen(false);
                         } else {
                           event.preventDefault();
-                          action(`${item.label} will be built in its planned step`);
+                          action(enabled ? `${currentRole} has no access to ${item.label}` : `${item.label} is not available`);
                         }
                       }}
-                      className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-[13px] font-medium ${active ? "bg-gradient-to-r from-[#7748ee] to-[#5b27d8] text-white shadow-lg shadow-purple-950/25" : enabled ? "text-slate-300 hover:bg-white/5 hover:text-white" : "cursor-not-allowed text-slate-600"}`}
+                      className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-[13px] font-medium ${active ? "bg-gradient-to-r from-[#7748ee] to-[#5b27d8] text-white shadow-lg shadow-purple-950/25" : authorized ? "text-slate-300 hover:bg-white/5 hover:text-white" : "cursor-not-allowed text-slate-600"}`}
                     >
                       <Icon size={18} className="shrink-0" />
                       {!collapsed && (
                         <>
                           <span className="truncate">{item.label}</span>
-                          {!enabled && <span className="ml-auto rounded-full border border-white/10 px-2 py-0.5 text-[9px] text-slate-500">Future</span>}
-                          {item.badge && <span className="ml-auto rounded-full bg-rose-500 px-2 py-0.5 text-[10px] text-white">{item.badge}</span>}
+                          {!authorized && <span className="ml-auto flex items-center gap-1 rounded-full border border-white/10 px-2 py-0.5 text-[9px] text-slate-500"><LockKeyhole size={9}/>Restricted</span>}
+                          {authorized && item.badge && <span className="ml-auto rounded-full bg-rose-500 px-2 py-0.5 text-[10px] text-white">{item.badge}</span>}
                         </>
                       )}
                     </a>
@@ -3427,7 +3600,7 @@ export default function AdminDashboardPage() {
             {!collapsed && (
               <div className="min-w-0">
                 <div className="truncate text-sm font-semibold">Shaneel Kumarreddy</div>
-                <div className="text-[11px] text-slate-400">Super Admin · Mock</div>
+                <div className="text-[11px] text-slate-400">{currentRole} · Mock</div>
               </div>
             )}
           </div>
@@ -3471,9 +3644,9 @@ export default function AdminDashboardPage() {
                 <div className="absolute right-0 top-14 w-80 rounded-2xl border border-slate-200 bg-white p-3 shadow-2xl">
                   <div className="flex items-center justify-between px-2 pb-2">
                     <p className="text-sm font-bold">Notifications</p>
-                    <button onClick={() => setReadNotifications(notifications.map((notification) => notification.id))} className="text-[10px] font-semibold text-violet-600">Mark all read</button>
+                    <button onClick={() => setReadNotifications((current) => Array.from(new Set([...current, ...roleNotifications.map((notification) => notification.id)])))} className="text-[10px] font-semibold text-violet-600">Mark all read</button>
                   </div>
-                  {notifications.map((notification) => (
+                  {roleNotifications.map((notification) => (
                     <button key={notification.id} onClick={() => { setReadNotifications((current) => current.includes(notification.id) ? current : [...current, notification.id]); navigateTo(notification.view); }} className={`mb-1 flex w-full gap-3 rounded-xl p-3 text-left hover:bg-slate-50 ${readNotifications.includes(notification.id) ? "opacity-60" : ""}`}>
                       <span className={`mt-1 h-2 w-2 shrink-0 rounded-full ${readNotifications.includes(notification.id) ? "bg-slate-300" : notification.urgent ? "bg-rose-500" : "bg-violet-500"}`} />
                       <span><b className="block text-xs leading-5 text-slate-700">{notification.title}</b><span className="block text-[10px] text-slate-400">{notification.detail} · Open {notification.view}</span></span>
@@ -3487,7 +3660,7 @@ export default function AdminDashboardPage() {
             <button aria-label="Open admin profile menu" aria-expanded={profileOpen} onClick={() => { setProfileOpen(!profileOpen); setNoticeOpen(false); }} className="flex items-center gap-3 border-l border-slate-200 py-1 pl-2 text-left sm:pl-4">
               <div className="grid h-10 w-10 place-items-center rounded-full bg-gradient-to-br from-violet-500 to-indigo-700 text-xs font-bold text-white">SK</div>
               <div className="hidden xl:block">
-                <div className="text-sm font-semibold">Super Admin</div>
+                <div className="text-sm font-semibold">{currentRole}</div>
                 <div className="flex items-center gap-1 text-[11px] text-emerald-600">
                   <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
                   Online
@@ -3495,7 +3668,7 @@ export default function AdminDashboardPage() {
               </div>
               <ChevronDown size={16} className="hidden text-slate-400 xl:block" />
             </button>
-            {profileOpen && <div className="absolute right-0 top-14 w-64 rounded-2xl border bg-white p-2 shadow-2xl"><div className="border-b p-3"><p className="text-sm font-bold">Shaneel Kumarreddy</p><p className="text-[10px] text-slate-400">Super Admin · Mock session</p></div><button onClick={() => navigateTo("Settings & Security")} className="mt-2 flex h-10 w-full items-center gap-3 rounded-xl px-3 text-xs font-semibold hover:bg-slate-50"><UserRound size={16}/>Profile & session settings</button><button onClick={() => { setProfileOpen(false); setLocked(true); }} className="flex h-10 w-full items-center gap-3 rounded-xl px-3 text-xs font-semibold hover:bg-slate-50"><LockKeyhole size={16}/>Lock console</button><button onClick={() => { setProfileOpen(false); setSignOutOpen(true); }} className="flex h-10 w-full items-center gap-3 rounded-xl px-3 text-xs font-semibold text-rose-600 hover:bg-rose-50"><LogOut size={16}/>Mock sign out</button></div>}
+            {profileOpen && <div className="absolute right-0 top-14 w-72 rounded-2xl border bg-white p-2 shadow-2xl"><div className="border-b p-3"><p className="text-sm font-bold">Shaneel Kumarreddy</p><p className="text-[10px] text-slate-400">{currentRole} · Mock session</p></div><label className="mx-2 mt-3 block text-[10px] font-bold uppercase tracking-wider text-slate-400">Preview workspace role<select aria-label="Preview admin workspace role" value={currentRole} onChange={(event) => changeRole(event.target.value as AdminRole)} className="mt-2 h-10 w-full rounded-xl border bg-white px-3 text-xs font-semibold normal-case tracking-normal"><option>Super Admin</option><option>Finance Admin</option><option>Support Admin</option><option>Content Admin</option><option>Operations Admin</option><option>Security Admin</option></select></label><p className="mx-2 mt-2 rounded-lg bg-amber-50 p-2 text-[9px] leading-4 text-amber-800">Role switching is a mock QA preview. Production roles come from authenticated permissions.</p><button onClick={() => navigateTo("Settings & Security")} disabled={!workspace.views.includes("Settings & Security")} className="mt-2 flex h-10 w-full items-center gap-3 rounded-xl px-3 text-xs font-semibold hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"><UserRound size={16}/>Profile & session settings</button><button onClick={() => { setProfileOpen(false); setLocked(true); }} className="flex h-10 w-full items-center gap-3 rounded-xl px-3 text-xs font-semibold hover:bg-slate-50"><LockKeyhole size={16}/>Lock console</button><button onClick={() => { setProfileOpen(false); setSignOutOpen(true); }} className="flex h-10 w-full items-center gap-3 rounded-xl px-3 text-xs font-semibold text-rose-600 hover:bg-rose-50"><LogOut size={16}/>Mock sign out</button></div>}
             </div>
           </div>
         </header>
@@ -3548,7 +3721,7 @@ export default function AdminDashboardPage() {
                 <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
                   <div>
                     <h1 className="text-2xl font-bold tracking-tight md:text-[28px]">Dashboard</h1>
-                    <p className="mt-1 text-sm text-slate-500">Welcome back, Shaneel. Here is today&apos;s platform overview.</p>
+                    <p className="mt-1 text-sm text-slate-500">Welcome back, Shaneel. Your {currentRole.toLowerCase()} workspace is focused on {workspace.focus.toLowerCase()}.</p>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     <button onClick={() => action("Mock report exported")} className="flex h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-600 hover:border-violet-300">
@@ -3563,12 +3736,22 @@ export default function AdminDashboardPage() {
                         <option>90 days</option>
                       </select>
                     </div>
-                    <span className="flex h-10 items-center rounded-xl bg-violet-50 px-3 text-xs font-semibold text-violet-700">UX Step 5 · Reliable &amp; accessible</span>
+                    <label className="flex h-10 items-center gap-2 rounded-xl border bg-white px-3 text-xs font-semibold text-slate-600"><UserCheck size={15}/><span className="sr-only">Workspace role</span><select value={currentRole} onChange={(event) => changeRole(event.target.value as AdminRole)} className="bg-transparent outline-none"><option>Super Admin</option><option>Finance Admin</option><option>Support Admin</option><option>Content Admin</option><option>Operations Admin</option><option>Security Admin</option></select></label>
+                    <span className="flex h-10 items-center rounded-xl bg-violet-50 px-3 text-xs font-semibold text-violet-700">UX Step 6 · Role personalized</span>
                   </div>
                 </div>
 
+                <section aria-labelledby="role-workspace-title" className="mb-6 overflow-hidden rounded-2xl border border-violet-200 bg-gradient-to-br from-violet-50 to-white shadow-sm">
+                  <div className="grid gap-5 p-5 lg:grid-cols-[1.1fr_1.2fr_.9fr] lg:p-6">
+                    <div><p className="text-[10px] font-bold uppercase tracking-[.14em] text-violet-600">Personalized workspace</p><h2 id="role-workspace-title" className="mt-2 text-lg font-bold">{currentRole}</h2><p className="mt-2 text-xs leading-5 text-slate-600">{workspace.description}</p><div className="mt-4 flex items-center gap-2 rounded-xl border border-violet-100 bg-white p-3 text-[10px] text-slate-500"><ShieldCheck size={15} className="shrink-0 text-violet-600"/><span><b className="text-slate-700">{workspace.views.length} of {adminViews.length} modules available.</b> Restricted modules remain visible but locked for clear permission feedback.</span></div></div>
+                    <div><h3 className="text-xs font-bold">Role priorities</h3><div className="mt-3 space-y-2">{workspace.priorities.map((item) => <button key={item.label} onClick={() => navigateTo(item.view)} className="flex w-full items-center gap-3 rounded-xl border bg-white p-3 text-left hover:border-violet-300"><span className={`h-2.5 w-2.5 shrink-0 rounded-full ${item.urgency === "Urgent" ? "bg-rose-500" : item.urgency === "High" ? "bg-amber-500" : "bg-violet-500"}`}/><span className="min-w-0"><b className="block truncate text-xs">{item.label}</b><span className="block truncate text-[10px] text-slate-400">{item.detail}</span></span><ChevronRight size={14} className="ml-auto shrink-0 text-slate-400"/></button>)}</div></div>
+                    <div><h3 className="text-xs font-bold">Permission summary</h3><div className="mt-3 space-y-2">{workspace.permissions.map((permission) => <div key={permission.label} className="flex items-center rounded-xl bg-white px-3 py-2.5 text-[10px]"><span className="text-slate-600">{permission.label}</span><span className={`ml-auto rounded-full px-2 py-1 font-bold ${permission.level === "Full action" ? "bg-emerald-50 text-emerald-700" : permission.level === "Guarded action" ? "bg-amber-50 text-amber-700" : permission.level === "View only" ? "bg-blue-50 text-blue-700" : "bg-slate-100 text-slate-500"}`}>{permission.level}</span></div>)}</div></div>
+                  </div>
+                  <div className="border-t border-violet-100 bg-white/70 px-5 py-3 text-[10px] leading-5 text-slate-500"><b>QA preview:</b> this role switcher demonstrates intended navigation, search scope and information boundaries only. Backend authorization must enforce every permission server-side.</div>
+                </section>
+
                 <section aria-label="Personal admin workspace" className="mb-6 grid gap-4 lg:grid-cols-3">
-                  <article className="rounded-2xl border border-[#e7e9f1] bg-white p-5 shadow-sm"><div className="flex items-center"><div><h2 className="font-bold">Pinned sections</h2><p className="mt-1 text-xs text-slate-500">Keep frequent work one tap away</p></div><Pin size={17} className="ml-auto text-violet-600"/></div><div className="mt-4 flex flex-wrap gap-2">{pinnedViews.length ? pinnedViews.map((view) => <button key={view} onClick={() => navigateTo(view)} className="flex h-9 items-center gap-2 rounded-xl bg-violet-50 px-3 text-xs font-bold text-violet-700 hover:bg-violet-100">{view}<ChevronRight size={13}/></button>) : <p className="text-xs text-slate-400">Pin any section from its breadcrumb.</p>}</div></article>
+                  <article className="rounded-2xl border border-[#e7e9f1] bg-white p-5 shadow-sm"><div className="flex items-center"><div><h2 className="font-bold">Pinned sections</h2><p className="mt-1 text-xs text-slate-500">Saved separately for {currentRole}</p></div><Pin size={17} className="ml-auto text-violet-600"/></div><div className="mt-4 flex flex-wrap gap-2">{pinnedViews.filter((view) => workspace.views.includes(view)).length ? pinnedViews.filter((view) => workspace.views.includes(view)).map((view) => <button key={view} onClick={() => navigateTo(view)} className="flex h-9 items-center gap-2 rounded-xl bg-violet-50 px-3 text-xs font-bold text-violet-700 hover:bg-violet-100">{view}<ChevronRight size={13}/></button>) : <p className="text-xs text-slate-400">Pin any permitted section from its breadcrumb.</p>}</div></article>
                   <article className="rounded-2xl border border-[#e7e9f1] bg-white p-5 shadow-sm"><div className="flex items-center"><div><h2 className="font-bold">Recently viewed</h2><p className="mt-1 text-xs text-slate-500">Return to your latest admin work</p></div><Clock3 size={17} className="ml-auto text-slate-400"/></div><div className="mt-4 flex flex-wrap gap-2">{recentViews.filter((view) => view !== "Dashboard").length ? recentViews.filter((view) => view !== "Dashboard").map((view) => <button key={view} onClick={() => navigateTo(view)} className="flex h-9 items-center gap-2 rounded-xl border px-3 text-xs font-semibold text-slate-600 hover:border-violet-300">{view}<ChevronRight size={13}/></button>) : <p className="text-xs text-slate-400">Sections you open will appear here.</p>}</div></article>
                   <article className="rounded-2xl border border-[#e7e9f1] bg-white p-5 shadow-sm"><div className="flex items-center"><div><h2 className="font-bold">Saved record views</h2><p className="mt-1 text-xs text-slate-500">Open frequently used filtered queues</p></div><Search size={17} className="ml-auto text-violet-600"/></div><div className="mt-4 flex flex-wrap gap-2">{savedRecordViews.slice(0, 3).map((view) => <button key={view.name} onClick={() => { applySavedRecordView(view); setCommandOpen(true); }} className="flex h-9 items-center gap-2 rounded-xl border border-violet-100 bg-violet-50 px-3 text-xs font-bold text-violet-700 hover:bg-violet-100">{view.name}<ChevronRight size={13}/></button>)}</div></article>
                 </section>
@@ -3578,8 +3761,22 @@ export default function AdminDashboardPage() {
                   <div role="tabpanel" aria-live="polite"><AdminStatePreview state={reliabilityState} onRetry={()=>{setReliabilityState(isOnline?"Loading":"Offline");if(isOnline)window.setTimeout(()=>setReliabilityState("Ready"),700)}}/></div>
                 </section>
 
+                <section aria-labelledby="qa-readiness-title" className="my-6 grid gap-5 rounded-2xl border border-emerald-200 bg-emerald-50/50 p-5 shadow-sm lg:grid-cols-[.8fr_1.2fr]">
+                  <div><div className="flex items-center gap-2 text-emerald-700"><ShieldCheck size={18}/><p className="text-[10px] font-bold uppercase tracking-[.14em]">Final UX QA</p></div><h2 id="qa-readiness-title" className="mt-2 text-lg font-bold">Admin interface ready for backend mapping</h2><p className="mt-2 text-xs leading-5 text-slate-600">All six UX completion steps are represented in the mock console. Backend integration must replace local role state, mock records and simulated actions without weakening these safeguards.</p><button onClick={() => navigateTo("Activity Logs")} disabled={!workspace.views.includes("Activity Logs")} className="mt-4 flex h-10 items-center gap-2 rounded-xl bg-emerald-600 px-4 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-40"><Activity size={15}/>Open permitted audit evidence</button></div>
+                  <div className="grid gap-2 sm:grid-cols-2">{[
+                    ["Navigation", "Direct URLs, Back/Forward, mobile drawer", "Passed"],
+                    ["Role boundaries", "Six workspaces and restricted modules", "Passed"],
+                    ["Search & records", "Permission-scoped results and links", "Passed"],
+                    ["Mobile queues", "Cards, tables and guarded bulk actions", "Passed"],
+                    ["Reliability", "Drafts, offline, empty, error and retry", "Passed"],
+                    ["Accessibility", "Keyboard, focus, dialogs, tabs and summaries", "Passed"],
+                    ["Backend authorization", "Server-side policies and RLS", "Pending backend"],
+                    ["Live integrations", "Providers, payments, messages and AI", "Pending backend"],
+                  ].map(([label, detail, status]) => <div key={label} className="rounded-xl border bg-white p-3"><div className="flex items-start gap-2"><CheckCircle2 size={15} className={status === "Passed" ? "mt-0.5 shrink-0 text-emerald-600" : "mt-0.5 shrink-0 text-amber-600"}/><div><b className="block text-xs">{label}</b><p className="mt-1 text-[10px] leading-4 text-slate-400">{detail}</p></div><span className={`ml-auto shrink-0 rounded-full px-2 py-1 text-[8px] font-bold ${status === "Passed" ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>{status}</span></div></div>)}</div>
+                </section>
+
                 <section aria-label="Key performance indicators" className="grid gap-4 sm:grid-cols-2 2xl:grid-cols-4">
-                  {metrics.map(({ label, value, change, note, icon: Icon, bg, color, positive }) => (
+                  {roleMetricSets[currentRole].map(({ label, value, change, note, icon: Icon, bg, color, positive }) => (
                     <article key={label} className="rounded-2xl border border-[#e7e9f1] bg-white p-5 shadow-sm">
                       <div className="flex items-start justify-between">
                         <div className={`grid h-12 w-12 place-items-center rounded-2xl ${bg} ${color}`}>
@@ -3601,7 +3798,7 @@ export default function AdminDashboardPage() {
                   ))}
                 </section>
 
-                <section className="mt-6 grid gap-6 xl:grid-cols-[1.55fr_.75fr]">
+                {(currentRole === "Super Admin" || currentRole === "Finance Admin") && <section className="mt-6 grid gap-6 xl:grid-cols-[1.55fr_.75fr]">
                   <article className="rounded-2xl border border-[#e7e9f1] bg-white p-5 shadow-sm md:p-6">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                       <div>
@@ -3675,7 +3872,7 @@ export default function AdminDashboardPage() {
                       ))}
                     </div>
                   </article>
-                </section>
+                </section>}
 
                 <section className="mt-6 grid gap-6 xl:grid-cols-[1fr_1fr]">
                   <article className="rounded-2xl border border-[#e7e9f1] bg-white p-5 shadow-sm md:p-6">
@@ -3684,27 +3881,22 @@ export default function AdminDashboardPage() {
                         <h2 className="font-bold">Action required</h2>
                         <p className="mt-1 text-xs text-slate-500">Queues that need admin attention</p>
                       </div>
-                      <button onClick={() => navigateTo("Withdrawals")} className="text-xs font-semibold text-violet-600">
+                      <button onClick={() => navigateTo(workspace.priorities[0].view)} className="text-xs font-semibold text-violet-600">
                         Open first queue
                       </button>
                     </div>
                     <div className="space-y-3">
-                      {[
-                        ["8 withdrawals awaiting approval", "₹74,260 in requested payouts", "bg-amber-50 text-amber-600", HandCoins, "High"],
-                        ["12 KYC profiles to review", "Oldest request is 9 hours old", "bg-violet-50 text-violet-600", UserCheck, "Medium"],
-                        ["3 high-risk accounts detected", "Device duplication and rapid-task signals", "bg-rose-50 text-rose-600", ShieldAlert, "Urgent"],
-                        ["5 support tickets are open", "2 are waiting beyond response target", "bg-blue-50 text-blue-600", Headphones, "Medium"],
-                      ].map(([title, sub, tone, Icon, priority], index) => {
-                        const target: AdminView[] = ["Withdrawals", "KYC Verification", "Fraud & Risk", "Support Centre"];
-                        return <button key={title as string} onClick={() => navigateTo(target[index])} className="flex w-full items-center gap-3 rounded-xl border border-slate-100 p-3 text-left hover:border-violet-200 hover:bg-violet-50/30">
-                          <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl ${tone}`}>
-                            <Icon size={19} />
+                      {workspace.priorities.map((item) => {
+                        const Icon = item.view === "Withdrawals" ? HandCoins : item.view === "Support Centre" ? Headphones : item.view === "Content" ? FileText : item.view === "Stores & Links" ? Link2 : item.view === "Reports" ? SlidersHorizontal : ShieldAlert;
+                        return <button key={item.label} onClick={() => navigateTo(item.view)} className="flex w-full items-center gap-3 rounded-xl border border-slate-100 p-3 text-left hover:border-violet-200 hover:bg-violet-50/30">
+                          <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl ${item.urgency === "Urgent" ? "bg-rose-50 text-rose-600" : item.urgency === "High" ? "bg-amber-50 text-amber-600" : "bg-violet-50 text-violet-600"}`}>
+                            <Icon size={19}/>
                           </span>
                           <span className="min-w-0">
-                            <b className="block truncate text-sm">{title as string}</b>
-                            <span className="block truncate text-[11px] text-slate-500">{sub as string}</span>
+                            <b className="block truncate text-sm">{item.label}</b>
+                            <span className="block truncate text-[11px] text-slate-500">{item.detail}</span>
                           </span>
-                          <span className={`ml-auto rounded-full px-2 py-1 text-[9px] font-bold ${priority === "Urgent" ? "bg-rose-100 text-rose-700" : priority === "High" ? "bg-amber-100 text-amber-700" : "bg-slate-100 text-slate-600"}`}>{priority as string}</span>
+                          <span className={`ml-auto rounded-full px-2 py-1 text-[9px] font-bold ${item.urgency === "Urgent" ? "bg-rose-100 text-rose-700" : item.urgency === "High" ? "bg-amber-100 text-amber-700" : "bg-slate-100 text-slate-600"}`}>{item.urgency}</span>
                         </button>;
                       })}
                     </div>
@@ -3744,7 +3936,7 @@ export default function AdminDashboardPage() {
                   </article>
                 </section>
 
-                <section className="mt-6 overflow-hidden rounded-2xl border border-[#e7e9f1] bg-white shadow-sm">
+                {workspace.views.includes("Wallet & Transactions") && <section className="mt-6 overflow-hidden rounded-2xl border border-[#e7e9f1] bg-white shadow-sm">
                   <div className="flex flex-col gap-3 border-b border-slate-100 p-5 sm:flex-row sm:items-center sm:justify-between md:px-6">
                     <div>
                       <h2 className="font-bold">Recent transactions</h2>
@@ -3790,9 +3982,9 @@ export default function AdminDashboardPage() {
                   <button onClick={() => navigateTo("Wallet & Transactions")} className="m-4 text-xs font-semibold text-violet-600 md:mx-6">
                     View complete ledger →
                   </button>
-                </section>
+                </section>}
 
-                <section className="mt-6 grid gap-6 xl:grid-cols-[1.15fr_.85fr]">
+                {workspace.views.includes("Games") && <section className="mt-6 grid gap-6 xl:grid-cols-[1.15fr_.85fr]">
                   <article className="rounded-2xl border border-[#e7e9f1] bg-white p-5 shadow-sm md:p-6">
                     <div className="mb-5 flex items-center justify-between">
                       <div>
@@ -3856,12 +4048,12 @@ export default function AdminDashboardPage() {
                       Live events will stream from Supabase after backend integration.
                     </div>
                   </article>
-                </section>
+                </section>}
               </>
             )}
           </div>
           <footer className="mx-auto mt-8 flex max-w-[1500px] flex-col gap-2 border-t border-slate-200 py-5 text-[11px] text-slate-400 sm:flex-row sm:items-center sm:justify-between">
-            <span>Glonni Ads Admin · UX Completion Step 5</span>
+            <span>Glonni Ads Admin · UX Completion Step 6</span>
             <span>Mock data only · No live providers, payments, messages or account changes</span>
           </footer>
         </main>
