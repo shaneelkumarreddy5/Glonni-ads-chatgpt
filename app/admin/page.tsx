@@ -21,6 +21,7 @@ type SearchRecord = {
   details: [string, string][];
 };
 type SavedRecordView = { name: string; type: "All" | SearchRecordType; status: string; priority: string; sort: string };
+type ReliabilityState = "Ready" | "Loading" | "Empty" | "Error" | "Offline";
 
 const adminViewSlugs: Record<AdminView, string> = {
   Dashboard: "dashboard",
@@ -62,6 +63,14 @@ function BulkQueueToolbar({ selectedCount, visibleCount, allSelected, onToggleAl
 function QueueDisplayControls({ compact, onCompact, columns, visibleColumns, onToggleColumn }: { compact: boolean; onCompact: () => void; columns: string[]; visibleColumns: string[]; onToggleColumn: (column: string) => void }) {
   const [open, setOpen] = useState(false);
   return <div className="relative flex items-center gap-2"><button onClick={onCompact} className={`hidden h-10 items-center gap-2 rounded-xl border px-3 text-[11px] font-bold md:flex ${compact ? "border-violet-300 bg-violet-50 text-violet-700" : "bg-white text-slate-600"}`}><SlidersHorizontal size={14}/>{compact ? "Compact rows" : "Comfortable rows"}</button><button onClick={() => setOpen((value) => !value)} className="hidden h-10 items-center gap-2 rounded-xl border bg-white px-3 text-[11px] font-bold text-slate-600 md:flex"><MoreHorizontal size={15}/>Columns</button>{open && <div className="absolute right-0 top-12 z-30 w-56 rounded-xl border bg-white p-3 shadow-xl"><p className="px-2 pb-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">Visible columns</p>{columns.map((column) => <label key={column} className="flex h-9 items-center gap-2 rounded-lg px-2 text-xs hover:bg-slate-50"><input type="checkbox" checked={visibleColumns.includes(column)} onChange={() => onToggleColumn(column)} className="h-4 w-4 rounded"/>{column}</label>)}</div>}<span className="rounded-lg bg-slate-100 px-2 py-1 text-[10px] font-bold text-slate-500 md:hidden">Mobile cards</span></div>;
+}
+
+function AdminStatePreview({ state, onRetry }: { state: ReliabilityState; onRetry: () => void }) {
+  if (state === "Loading") return <div role="status" aria-live="polite" className="grid gap-3 rounded-2xl border bg-white p-5"><span className="sr-only">Loading admin records</span>{["w-2/3", "w-full", "w-5/6"].map((width) => <div key={width} className={`h-10 animate-pulse rounded-xl bg-slate-100 ${width}`} />)}</div>;
+  if (state === "Empty") return <div role="status" className="empty-state rounded-2xl border bg-white p-8 text-center"><FileText className="mx-auto text-slate-300"/><h3 className="mt-3 text-sm font-bold">No records yet</h3><p className="mt-1 text-xs text-slate-500">Explain why the queue is empty and give the administrator one useful next action.</p></div>;
+  if (state === "Error") return <div role="alert" className="rounded-2xl border border-rose-200 bg-rose-50 p-5"><CircleAlert className="text-rose-600"/><h3 className="mt-3 text-sm font-bold text-rose-950">Records could not be loaded</h3><p className="mt-1 text-xs text-rose-800">Existing data remains unchanged. Retry safely or return later.</p><button onClick={onRetry} className="mt-4 flex h-10 items-center gap-2 rounded-xl bg-rose-600 px-4 text-xs font-bold text-white"><RefreshCw size={14}/>Retry</button></div>;
+  if (state === "Offline") return <div role="alert" className="rounded-2xl border border-amber-200 bg-amber-50 p-5"><Wifi className="text-amber-700"/><h3 className="mt-3 text-sm font-bold text-amber-950">You are offline</h3><p className="mt-1 text-xs text-amber-900">Read-only cached information may remain visible. Changes must wait for a verified connection.</p><button onClick={onRetry} className="mt-4 h-10 rounded-xl border border-amber-300 bg-white px-4 text-xs font-bold text-amber-800">Check connection</button></div>;
+  return <div role="status" className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5"><CheckCircle2 className="text-emerald-600"/><h3 className="mt-3 text-sm font-bold text-emerald-950">Queue is ready</h3><p className="mt-1 text-xs text-emerald-800">Records are current, controls are available and the last refresh time is visible.</p></div>;
 }
 const adminViews = Object.keys(adminViewSlugs) as AdminView[];
 
@@ -2737,7 +2746,9 @@ function ShopEarnManagement({action}:{action:(message:string)=>void}){
 function MiniLine({ values }: { values: number[] }) {
   const points = values.map((v, i) => `${(i / (values.length - 1)) * 100},${100 - v}`).join(" ");
   return (
-    <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="h-[250px] w-full overflow-visible" role="img" aria-label="Revenue and rewards trend chart">
+    <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="h-[250px] w-full overflow-visible" role="img" aria-labelledby="revenue-chart-title revenue-chart-description">
+      <title id="revenue-chart-title">Revenue and rewards trend</title>
+      <desc id="revenue-chart-description">The mock trend rises overall across the selected period, from {values[0]} to {values[values.length - 1]} relative units, with {values.length} plotted observations.</desc>
       {[20, 40, 60, 80].map((y) => (
         <line key={y} x1="0" x2="100" y1={y} y2={y} stroke="#e9e7ef" strokeWidth=".4" />
       ))}
@@ -2828,10 +2839,13 @@ const initialContentItems:ContentItem[]=[
 ];
 
 function ContentManagement({action}:{action:(message:string)=>void}){
-  const [items,setItems]=useState(initialContentItems); const [tab,setTab]=useState<"Library"|"AI work queue"|"Templates"|"Agent policy"|"History">("Library"); const [query,setQuery]=useState(""); const [status,setStatus]=useState("All statuses"); const [selected,setSelected]=useState<ContentItem|null>(null); const [createOpen,setCreateOpen]=useState(false); const [brief,setBrief]=useState(""); const [contentType,setContentType]=useState<ContentItem["type"]>("Banner"); const [decision,setDecision]=useState<"publish"|"schedule"|"unpublish"|"rollback"|null>(null); const [reason,setReason]=useState("");
+  const [items,setItems]=useState(initialContentItems); const [tab,setTab]=useState<"Library"|"AI work queue"|"Templates"|"Agent policy"|"History">("Library"); const [query,setQuery]=useState(""); const [status,setStatus]=useState("All statuses"); const [selected,setSelected]=useState<ContentItem|null>(null); const [createOpen,setCreateOpen]=useState(false); const [brief,setBrief]=useState(""); const [contentType,setContentType]=useState<ContentItem["type"]>("Banner"); const [decision,setDecision]=useState<"publish"|"schedule"|"unpublish"|"rollback"|null>(null); const [reason,setReason]=useState(""); const [draftStatus,setDraftStatus]=useState<"Saved"|"Saving"|"Recovered"|"">("");
   const visible=items.filter(i=>(!query||`${i.title} ${i.type} ${i.channel} ${i.audience}`.toLowerCase().includes(query.toLowerCase()))&&(status==="All statuses"||i.status===status));
   const tone=(v:string)=>v==="Published"?"bg-emerald-100 text-emerald-700":v==="Scheduled"?"bg-blue-100 text-blue-700":v==="Review"?"bg-amber-100 text-amber-700":"bg-slate-100 text-slate-600";
-  const createDraft=()=>{if(!brief.trim())return;const item:ContentItem={id:`CNT-${1043+items.length}`,title:brief.trim(),type:contentType,status:"Draft",channel:contentType==="Notification"?"Push + inbox":contentType==="FAQ"?"Help centre":"Home",audience:"Awaiting agent targeting",origin:"AI agent",updated:"Just now",schedule:"Not scheduled",objective:"Defined from the content brief"};setItems([item,...items]);setBrief("");setCreateOpen(false);action("AI content job created as a mock draft")};
+  useEffect(()=>{try{const stored=window.localStorage.getItem("glonni-admin-content-brief");if(!stored)return;const draft=JSON.parse(stored) as {brief?:string;contentType?:ContentItem["type"]};if(draft.brief){setBrief(draft.brief);setContentType(draft.contentType??"Banner");setDraftStatus("Recovered")}}catch{window.localStorage.removeItem("glonni-admin-content-brief")}},[]);
+  useEffect(()=>{if(!brief.trim()){window.dispatchEvent(new CustomEvent("glonni-admin-dirty",{detail:false}));return}setDraftStatus("Saving");window.dispatchEvent(new CustomEvent("glonni-admin-dirty",{detail:true}));const timer=window.setTimeout(()=>{window.localStorage.setItem("glonni-admin-content-brief",JSON.stringify({brief,contentType,savedAt:new Date().toISOString()}));setDraftStatus("Saved");window.dispatchEvent(new CustomEvent("glonni-admin-dirty",{detail:false}))},650);return()=>window.clearTimeout(timer)},[brief,contentType]);
+  const clearDraft=()=>{setBrief("");setDraftStatus("");window.localStorage.removeItem("glonni-admin-content-brief");window.dispatchEvent(new CustomEvent("glonni-admin-dirty",{detail:false}));action("Recovered content brief cleared")};
+  const createDraft=()=>{if(!brief.trim())return;const item:ContentItem={id:`CNT-${1043+items.length}`,title:brief.trim(),type:contentType,status:"Draft",channel:contentType==="Notification"?"Push + inbox":contentType==="FAQ"?"Help centre":"Home",audience:"Awaiting agent targeting",origin:"AI agent",updated:"Just now",schedule:"Not scheduled",objective:"Defined from the content brief"};setItems([item,...items]);window.localStorage.removeItem("glonni-admin-content-brief");window.dispatchEvent(new CustomEvent("glonni-admin-dirty",{detail:false}));setBrief("");setDraftStatus("");setCreateOpen(false);action("AI content job created as a mock draft")};
   const applyDecision=()=>{if(!selected||!decision||!reason.trim())return;setItems(x=>x.map(i=>i.id===selected.id?{...i,status:decision==="publish"?"Published":decision==="schedule"?"Scheduled":decision==="unpublish"?"Draft":"Published",updated:"Just now",schedule:decision==="schedule"?"Tomorrow, 9:00 AM":decision==="publish"||decision==="rollback"?"Live now":"Unpublished"}:i));action(`${selected.title}: mock ${decision} recorded`);setSelected(null);setDecision(null);setReason("")};
   return <>
     <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between"><div><div className="mb-2 text-xs text-slate-400">Operations <span className="px-2">›</span> Content</div><h1 className="text-2xl font-bold tracking-tight md:text-[28px]">AI Content Operations</h1><p className="mt-1 max-w-3xl text-sm text-slate-500">Let a future AI agent plan, create, target, schedule, publish and improve app content within strict safety policies.</p></div><div className="flex flex-wrap gap-2"><button onClick={()=>action("Mock content report exported")} className="flex h-10 items-center gap-2 rounded-xl border bg-white px-4 text-xs font-bold"><Download size={15}/>Export</button><span className="flex h-10 items-center rounded-xl bg-violet-50 px-3 text-xs font-semibold text-violet-700">Step 14 · AI-ready mock</span><button onClick={()=>setCreateOpen(true)} className="flex h-10 items-center gap-2 rounded-xl bg-violet-600 px-4 text-xs font-bold text-white"><Sparkles size={15}/>Give AI a brief</button></div></div>
@@ -2842,7 +2856,7 @@ function ContentManagement({action}:{action:(message:string)=>void}){
     </section>
     <section className="mt-6 grid gap-6 xl:grid-cols-2"><article className="rounded-2xl border bg-white p-5 shadow-sm"><h2 className="font-bold">Agent operating loop</h2><p className="mt-1 text-xs text-slate-500">The future backend agent follows one observable, reversible workflow.</p><div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">{[["1","Observe","Campaign and support signals"],["2","Plan","Objective, audience and evidence"],["3","Act","Create, test and schedule"],["4","Learn","Measure, stop or optimize"]].map(x=><div key={x[0]} className="rounded-xl bg-slate-50 p-3"><span className="grid h-6 w-6 place-items-center rounded-full bg-violet-100 text-[10px] font-bold text-violet-700">{x[0]}</span><b className="mt-2 block text-xs">{x[1]}</b><p className="mt-1 text-[10px] text-slate-400">{x[2]}</p></div>)}</div></article><article className="rounded-2xl border bg-white p-5 shadow-sm"><h2 className="font-bold">Autonomy controls</h2><div className="mt-4 grid gap-3 sm:grid-cols-2">{[["Mode","Supervised mock"],["Daily publish limit","10 items"],["Quiet hours","9 PM–8 AM IST"],["Automatic rollback","Complaint or error threshold"],["Claim evidence","Required"],["Agent kill switch","Available"]].map(x=><div key={x[0]} className="rounded-xl border p-3"><p className="text-[10px] text-slate-400">{x[0]}</p><b className="text-xs">{x[1]}</b></div>)}</div></article></section>
     {selected&&<div className="fixed inset-0 z-[80] flex justify-end"><button aria-label="Close content details" onClick={()=>setSelected(null)} className="absolute inset-0 bg-slate-950/40"/><aside role="dialog" aria-modal="true" className="relative h-full w-full max-w-[580px] overflow-y-auto bg-[#f7f8fc] p-5 shadow-2xl"><div className="flex items-start"><div><p className="text-xs text-slate-400">{selected.id} · {selected.type}</p><h2 className="mt-1 text-lg font-bold">{selected.title}</h2></div><button onClick={()=>setSelected(null)} className="ml-auto grid h-10 w-10 place-items-center"><X/></button></div><section className="mt-5 rounded-2xl border bg-white p-5"><h3 className="font-bold">Preview &amp; intent</h3><div className="mt-4 rounded-2xl bg-gradient-to-br from-violet-600 to-indigo-700 p-6 text-white"><p className="text-[10px] uppercase tracking-widest opacity-70">Glonni Ads</p><h4 className="mt-3 text-xl font-bold">{selected.title}</h4><p className="mt-2 text-xs opacity-80">AI-generated preview placeholder for {selected.channel}.</p><button className="mt-5 rounded-xl bg-white px-4 py-2 text-xs font-bold text-violet-700">Explore now</button></div><div className="mt-4 grid gap-3 sm:grid-cols-2">{[["Objective",selected.objective],["Audience",selected.audience],["Origin",selected.origin],["Schedule",selected.schedule]].map(x=><div key={x[0]} className="rounded-xl bg-slate-50 p-3"><p className="text-[10px] text-slate-400">{x[0]}</p><b className="text-xs">{x[1]}</b></div>)}</div></section><section className="mt-4 rounded-2xl border bg-white p-5"><h3 className="font-bold">Policy result</h3><div className="mt-3 flex gap-2 rounded-xl bg-emerald-50 p-3 text-xs text-emerald-800"><ShieldCheck size={17}/>Claims, audience, frequency and expiry checks passed in this mock review.</div><div className="mt-4 flex flex-wrap gap-2">{selected.status!=="Published"&&<button onClick={()=>setDecision("publish")} className="h-10 rounded-xl bg-violet-600 px-4 text-xs font-bold text-white">Publish</button>}<button onClick={()=>setDecision("schedule")} className="h-10 rounded-xl border border-blue-200 px-4 text-xs font-bold text-blue-700">Schedule</button>{selected.status==="Published"&&<button onClick={()=>setDecision("unpublish")} className="h-10 rounded-xl border border-amber-200 px-4 text-xs font-bold text-amber-700">Unpublish</button>}<button onClick={()=>setDecision("rollback")} className="h-10 rounded-xl border px-4 text-xs font-bold">Rollback</button></div></section></aside></div>}
-    {createOpen&&<div className="fixed inset-0 z-[90] grid place-items-center bg-slate-950/50 p-4"><div role="dialog" aria-modal="true" className="w-full max-w-lg rounded-2xl bg-white p-6"><h3 className="flex items-center gap-2 text-lg font-bold"><Bot className="text-violet-600"/>Give the AI agent a content brief</h3><p className="mt-1 text-xs text-slate-500">The agent will later gather verified inputs, create variants, run checks and follow the selected approval policy.</p><label className="mt-5 block text-xs font-bold">Content type<select value={contentType} onChange={e=>setContentType(e.target.value as ContentItem["type"])} className="mt-2 h-11 w-full rounded-xl border bg-white px-3 font-normal"><option>Banner</option><option>Featured card</option><option>FAQ</option><option>Notification</option><option>Legal page</option></select></label><label className="mt-4 block text-xs font-bold">Goal or brief<textarea autoFocus value={brief} onChange={e=>setBrief(e.target.value)} className="mt-2 min-h-28 w-full rounded-xl border p-3 font-normal" placeholder="Example: Explain KYC benefits to users who attempted a withdrawal"/></label><div className="mt-4 rounded-xl bg-violet-50 p-3 text-[11px] text-violet-800">This creates a mock draft only. No AI model, notification service or live publishing backend is connected.</div><div className="mt-6 flex justify-end gap-2"><button onClick={()=>setCreateOpen(false)} className="h-10 rounded-xl border px-4 text-xs font-bold">Cancel</button><button disabled={!brief.trim()} onClick={createDraft} className="h-10 rounded-xl bg-violet-600 px-4 text-xs font-bold text-white disabled:opacity-40">Create AI job</button></div></div></div>}
+    {createOpen&&<div className="fixed inset-0 z-[90] grid place-items-center bg-slate-950/50 p-4"><div role="dialog" aria-modal="true" aria-labelledby="content-brief-title" aria-describedby="content-brief-description" className="w-full max-w-lg rounded-2xl bg-white p-6"><h3 id="content-brief-title" className="flex items-center gap-2 text-lg font-bold"><Bot className="text-violet-600"/>Give the AI agent a content brief</h3><p id="content-brief-description" className="mt-1 text-xs text-slate-500">The agent will later gather verified inputs, create variants, run checks and follow the selected approval policy.</p>{draftStatus==="Recovered"&&<div role="status" className="mt-4 flex items-center gap-2 rounded-xl border border-blue-200 bg-blue-50 p-3 text-xs text-blue-900"><RotateCcw size={15}/><span><b>Draft recovered.</b> Continue where you stopped.</span><button onClick={clearDraft} className="ml-auto font-bold text-blue-700">Clear</button></div>}<label className="mt-5 block text-xs font-bold">Content type<select value={contentType} onChange={e=>setContentType(e.target.value as ContentItem["type"])} className="mt-2 h-11 w-full rounded-xl border bg-white px-3 font-normal"><option>Banner</option><option>Featured card</option><option>FAQ</option><option>Notification</option><option>Legal page</option></select></label><label className="mt-4 block text-xs font-bold">Goal or brief<textarea autoFocus value={brief} onChange={e=>setBrief(e.target.value)} className="mt-2 min-h-28 w-full rounded-xl border p-3 font-normal" placeholder="Example: Explain KYC benefits to users who attempted a withdrawal"/></label><div className="mt-2 flex h-5 items-center justify-end text-[10px] font-semibold text-slate-500" role="status" aria-live="polite">{draftStatus==="Saving"?"Saving draft…":draftStatus==="Saved"?"Draft saved on this device":draftStatus==="Recovered"?"Recovered draft loaded":""}</div><div className="mt-3 rounded-xl bg-violet-50 p-3 text-[11px] text-violet-800">This creates a mock draft only. No AI model, notification service or live publishing backend is connected.</div><div className="mt-6 flex justify-end gap-2"><button data-dialog-close onClick={()=>setCreateOpen(false)} className="h-10 rounded-xl border px-4 text-xs font-bold">Save &amp; close</button><button disabled={!brief.trim()} onClick={createDraft} className="h-10 rounded-xl bg-violet-600 px-4 text-xs font-bold text-white disabled:opacity-40">Create AI job</button></div></div></div>}
     {decision&&selected&&<div className="fixed inset-0 z-[100] grid place-items-center bg-slate-950/50 p-4"><div role="alertdialog" aria-modal="true" className="w-full max-w-md rounded-2xl bg-white p-6"><h3 className="text-lg font-bold capitalize">{decision} content?</h3><p className="mt-2 text-xs text-slate-500">This sensitive mock action requires a reason and creates a versioned audit entry.</p><textarea autoFocus value={reason} onChange={e=>setReason(e.target.value)} className="mt-4 min-h-24 w-full rounded-xl border p-3 text-xs" placeholder="Required reason"/><div className="mt-4 flex justify-end gap-2"><button onClick={()=>{setDecision(null);setReason("")}} className="h-10 rounded-xl border px-4 text-xs font-bold">Cancel</button><button disabled={!reason.trim()} onClick={applyDecision} className="h-10 rounded-xl bg-violet-600 px-4 text-xs font-bold text-white disabled:opacity-40">Confirm</button></div></div></div>}
   </>;
 }
@@ -3011,6 +3025,10 @@ export default function AdminDashboardPage() {
   const [selectedRecord, setSelectedRecord] = useState<SearchRecord | null>(null);
   const [saveViewName, setSaveViewName] = useState("");
   const [showSaveView, setShowSaveView] = useState(false);
+  const [isOnline, setIsOnline] = useState(true);
+  const [dirtyForm, setDirtyForm] = useState(false);
+  const [pendingNavigation, setPendingNavigation] = useState<AdminView | null>(null);
+  const [reliabilityState, setReliabilityState] = useState<ReliabilityState>("Ready");
   const [savedRecordViews, setSavedRecordViews] = useState<SavedRecordView[]>([
     { name: "High-priority work", type: "All", status: "All statuses", priority: "High", sort: "Recently updated" },
     { name: "Open support cases", type: "Support", status: "Open", priority: "All priorities", sort: "Recently updated" },
@@ -3075,7 +3093,12 @@ export default function AdminDashboardPage() {
     setHistoryLength(Math.max(length, position + 1));
   }, []);
 
-  const navigateTo = useCallback((view: AdminView, replace = false) => {
+  const dirtyFormRef = useRef(false);
+  const navigateTo = useCallback((view: AdminView, replace = false, discardDraft = false) => {
+    if (dirtyFormRef.current && view !== activeView && !discardDraft) {
+      setPendingNavigation(view);
+      return;
+    }
     const url = new URL(window.location.href);
     url.searchParams.set("section", adminViewSlugs[view]);
     url.searchParams.delete("record");
@@ -3092,7 +3115,7 @@ export default function AdminDashboardPage() {
     setMenuOpen(false);
     setNoticeOpen(false);
     window.scrollTo({ top: 0, behavior: "smooth" });
-  }, [rememberView]);
+  }, [activeView, rememberView]);
 
   const openRecord = useCallback((record: SearchRecord) => {
     const url = new URL(window.location.href);
@@ -3221,6 +3244,35 @@ export default function AdminDashboardPage() {
   }, [closeRecord, selectedRecord]);
 
   useEffect(() => {
+    const handleDirty = (event: Event) => { const next=Boolean((event as CustomEvent<boolean>).detail);dirtyFormRef.current=next;setDirtyForm(next) };
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => { if (!dirtyFormRef.current) return; event.preventDefault(); event.returnValue="" };
+    const handleOnline = () => { setIsOnline(true); setReliabilityState((current)=>current==="Offline"?"Ready":current); action("Connection restored") };
+    const handleOffline = () => { setIsOnline(false); setReliabilityState("Offline") };
+    setIsOnline(window.navigator.onLine);
+    window.addEventListener("glonni-admin-dirty",handleDirty);
+    window.addEventListener("beforeunload",handleBeforeUnload);
+    window.addEventListener("online",handleOnline);
+    window.addEventListener("offline",handleOffline);
+    return()=>{window.removeEventListener("glonni-admin-dirty",handleDirty);window.removeEventListener("beforeunload",handleBeforeUnload);window.removeEventListener("online",handleOnline);window.removeEventListener("offline",handleOffline)};
+  }, []);
+
+  useEffect(() => {
+    let activeDialog: HTMLElement | null = null;
+    let returnFocus: HTMLElement | null = null;
+    const focusable = 'button:not([disabled]),a[href],input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
+    const syncDialog = () => {
+      const dialogs=Array.from(document.querySelectorAll<HTMLElement>('[role="dialog"],[role="alertdialog"]'));
+      const next=dialogs.at(-1)??null;
+      if(next===activeDialog)return;
+      if(!next&&activeDialog){returnFocus?.focus();activeDialog=null;returnFocus=null;return}
+      if(next){returnFocus=document.activeElement instanceof HTMLElement?document.activeElement:null;activeDialog=next;window.setTimeout(()=>{const target=next.querySelector<HTMLElement>('[autofocus]')??next.querySelector<HTMLElement>(focusable);if(!target){next.tabIndex=-1;next.focus()}else target.focus()},0)};
+    };
+    const observer=new MutationObserver(syncDialog);observer.observe(document.body,{childList:true,subtree:true});syncDialog();
+    const trap=(event:KeyboardEvent)=>{if(!activeDialog)return;if(event.key==="Escape"){const close=activeDialog.querySelector<HTMLButtonElement>('[data-dialog-close],button[aria-label^="Close"]');if(close){event.preventDefault();event.stopPropagation();close.click()}return}if(event.key!=="Tab")return;const items=Array.from(activeDialog.querySelectorAll<HTMLElement>(focusable)).filter(item=>item.offsetParent!==null);if(!items.length){event.preventDefault();activeDialog.focus();return}const first=items[0],last=items[items.length-1];if(event.shiftKey&&document.activeElement===first){event.preventDefault();last.focus()}else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first.focus()}};
+    document.addEventListener("keydown",trap,true);return()=>{observer.disconnect();document.removeEventListener("keydown",trap,true)};
+  }, []);
+
+  useEffect(() => {
     if (commandOpen) window.setTimeout(() => commandInputRef.current?.focus(), 0);
   }, [commandOpen]);
 
@@ -3233,6 +3285,8 @@ export default function AdminDashboardPage() {
           {toast}
         </div>
       )}
+      {!isOnline && <div role="alert" className="fixed inset-x-0 top-0 z-[160] flex min-h-11 items-center justify-center gap-2 bg-amber-500 px-4 py-2 text-center text-xs font-bold text-amber-950"><Wifi size={15}/>Offline mode: review cached mock data only. Changes are paused until connection returns.</div>}
+      {pendingNavigation && <div className="fixed inset-0 z-[145] grid place-items-center bg-slate-950/55 p-4"><div role="alertdialog" aria-modal="true" aria-labelledby="unsaved-title" aria-describedby="unsaved-description" className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl"><CircleAlert className="text-amber-600"/><h2 id="unsaved-title" className="mt-3 text-lg font-bold">Draft is still saving</h2><p id="unsaved-description" className="mt-2 text-sm leading-6 text-slate-500">Wait for autosave to finish, or discard the latest unsaved keystrokes and continue to {pendingNavigation}.</p><div className="mt-5 flex gap-2"><button autoFocus data-dialog-close onClick={()=>setPendingNavigation(null)} className="h-10 flex-1 rounded-xl border text-xs font-bold">Stay here</button><button onClick={()=>{const target=pendingNavigation;setPendingNavigation(null);dirtyFormRef.current=false;setDirtyForm(false);navigateTo(target,false,true)}} className="h-10 flex-1 rounded-xl bg-rose-600 text-xs font-bold text-white">Discard &amp; continue</button></div></div></div>}
       {menuOpen && <button aria-label="Close admin navigation" className="fixed inset-0 z-40 bg-slate-950/40 lg:hidden" onClick={() => setMenuOpen(false)} />}
       {locked && (
         <div className="fixed inset-0 z-[150] grid place-items-center bg-[#10172a] p-5 text-white">
@@ -3509,7 +3563,7 @@ export default function AdminDashboardPage() {
                         <option>90 days</option>
                       </select>
                     </div>
-                    <span className="flex h-10 items-center rounded-xl bg-violet-50 px-3 text-xs font-semibold text-violet-700">UX Step 4 · Mock data</span>
+                    <span className="flex h-10 items-center rounded-xl bg-violet-50 px-3 text-xs font-semibold text-violet-700">UX Step 5 · Reliable &amp; accessible</span>
                   </div>
                 </div>
 
@@ -3517,6 +3571,11 @@ export default function AdminDashboardPage() {
                   <article className="rounded-2xl border border-[#e7e9f1] bg-white p-5 shadow-sm"><div className="flex items-center"><div><h2 className="font-bold">Pinned sections</h2><p className="mt-1 text-xs text-slate-500">Keep frequent work one tap away</p></div><Pin size={17} className="ml-auto text-violet-600"/></div><div className="mt-4 flex flex-wrap gap-2">{pinnedViews.length ? pinnedViews.map((view) => <button key={view} onClick={() => navigateTo(view)} className="flex h-9 items-center gap-2 rounded-xl bg-violet-50 px-3 text-xs font-bold text-violet-700 hover:bg-violet-100">{view}<ChevronRight size={13}/></button>) : <p className="text-xs text-slate-400">Pin any section from its breadcrumb.</p>}</div></article>
                   <article className="rounded-2xl border border-[#e7e9f1] bg-white p-5 shadow-sm"><div className="flex items-center"><div><h2 className="font-bold">Recently viewed</h2><p className="mt-1 text-xs text-slate-500">Return to your latest admin work</p></div><Clock3 size={17} className="ml-auto text-slate-400"/></div><div className="mt-4 flex flex-wrap gap-2">{recentViews.filter((view) => view !== "Dashboard").length ? recentViews.filter((view) => view !== "Dashboard").map((view) => <button key={view} onClick={() => navigateTo(view)} className="flex h-9 items-center gap-2 rounded-xl border px-3 text-xs font-semibold text-slate-600 hover:border-violet-300">{view}<ChevronRight size={13}/></button>) : <p className="text-xs text-slate-400">Sections you open will appear here.</p>}</div></article>
                   <article className="rounded-2xl border border-[#e7e9f1] bg-white p-5 shadow-sm"><div className="flex items-center"><div><h2 className="font-bold">Saved record views</h2><p className="mt-1 text-xs text-slate-500">Open frequently used filtered queues</p></div><Search size={17} className="ml-auto text-violet-600"/></div><div className="mt-4 flex flex-wrap gap-2">{savedRecordViews.slice(0, 3).map((view) => <button key={view.name} onClick={() => { applySavedRecordView(view); setCommandOpen(true); }} className="flex h-9 items-center gap-2 rounded-xl border border-violet-100 bg-violet-50 px-3 text-xs font-bold text-violet-700 hover:bg-violet-100">{view.name}<ChevronRight size={13}/></button>)}</div></article>
+                </section>
+
+                <section aria-labelledby="reliability-title" className="mt-6 grid gap-4 rounded-2xl border border-[#e7e9f1] bg-white p-5 shadow-sm lg:grid-cols-[.75fr_1.25fr]">
+                  <div><p className="text-[10px] font-bold uppercase tracking-wider text-violet-600">Reusable backend states</p><h2 id="reliability-title" className="mt-1 font-bold">Reliability preview</h2><p className="mt-1 text-xs leading-5 text-slate-500">Every future queue will use the same clear loading, empty, error, offline and ready pattern.</p><div role="tablist" aria-label="Preview a reliability state" className="mt-4 flex flex-wrap gap-2">{(["Ready","Loading","Empty","Error","Offline"] as ReliabilityState[]).map((state,index,states)=><button key={state} role="tab" aria-selected={reliabilityState===state} tabIndex={reliabilityState===state?0:-1} onKeyDown={(event)=>{if(event.key!=="ArrowLeft"&&event.key!=="ArrowRight")return;event.preventDefault();const next=states[(index+(event.key==="ArrowRight"?1:-1)+states.length)%states.length];setReliabilityState(next);window.setTimeout(()=>document.querySelector<HTMLElement>(`[role="tab"][aria-label="Preview ${next} state"]`)?.focus(),0)}} aria-label={`Preview ${state} state`} onClick={()=>setReliabilityState(state)} className={`h-9 rounded-xl px-3 text-[11px] font-bold ${reliabilityState===state?"bg-violet-600 text-white":"border bg-white text-slate-600"}`}>{state}</button>)}</div><p className="mt-4 text-[10px] text-slate-400">Live connection: <b className={isOnline?"text-emerald-600":"text-amber-700"}>{isOnline?"Online":"Offline"}</b>{dirtyForm&&" · A form has unsaved input"}</p></div>
+                  <div role="tabpanel" aria-live="polite"><AdminStatePreview state={reliabilityState} onRetry={()=>{setReliabilityState(isOnline?"Loading":"Offline");if(isOnline)window.setTimeout(()=>setReliabilityState("Ready"),700)}}/></div>
                 </section>
 
                 <section aria-label="Key performance indicators" className="grid gap-4 sm:grid-cols-2 2xl:grid-cols-4">
@@ -3549,9 +3608,9 @@ export default function AdminDashboardPage() {
                         <h2 className="font-bold">Revenue and rewards</h2>
                         <p className="mt-1 text-xs text-slate-500">Provider revenue compared with approved user rewards</p>
                       </div>
-                      <div className="flex rounded-lg bg-slate-100 p-1">
-                        {(["7 days", "30 days", "90 days"] as const).map((x) => (
-                          <button key={x} onClick={() => setRange(x)} className={`rounded-md px-3 py-1.5 text-[11px] font-semibold ${range === x ? "bg-white text-violet-700 shadow-sm" : "text-slate-500"}`}>
+                      <div role="tablist" aria-label="Revenue chart period" className="flex rounded-lg bg-slate-100 p-1">
+                        {(["7 days", "30 days", "90 days"] as const).map((x, index, periods) => (
+                          <button key={x} role="tab" aria-selected={range===x} tabIndex={range===x?0:-1} onKeyDown={(event)=>{if(event.key!=="ArrowLeft"&&event.key!=="ArrowRight")return;event.preventDefault();const next=periods[(index+(event.key==="ArrowRight"?1:-1)+periods.length)%periods.length];setRange(next);window.setTimeout(()=>document.querySelector<HTMLElement>(`[role="tab"][aria-label="Revenue ${next}"]`)?.focus(),0)}} aria-label={`Revenue ${x}`} onClick={() => setRange(x)} className={`rounded-md px-3 py-1.5 text-[11px] font-semibold ${range === x ? "bg-white text-violet-700 shadow-sm" : "text-slate-500"}`}>
                             {x}
                           </button>
                         ))}
@@ -3570,6 +3629,7 @@ export default function AdminDashboardPage() {
                     <div className="mt-3">
                       <MiniLine values={chartSets[range]} />
                     </div>
+                    <p className="sr-only">Accessible summary: provider revenue is ₹8.42 lakh and approved user rewards are ₹5.06 lakh. The selected {range} trend rises overall with minor fluctuations.</p>
                     <div className="flex justify-between border-t border-slate-100 pt-3 text-[10px] text-slate-400">
                       <span>Start</span>
                       <span>Mid-period</span>
@@ -3585,6 +3645,8 @@ export default function AdminDashboardPage() {
                       <span className="text-[10px] font-semibold text-slate-400">THIS MONTH</span>
                     </div>
                     <div
+                      role="img"
+                      aria-label="Reward sources: Watch and Earn 36 percent, Games and installs 24 percent, Surveys 18 percent, Shop cashback 12 percent, Referrals 10 percent"
                       className="mx-auto my-6 grid h-44 w-44 place-items-center rounded-full"
                       style={{
                         background: "conic-gradient(#7545e8 0 36%, #28b989 36% 60%, #f3a833 60% 78%, #ee647e 78% 90%, #5f9eea 90% 100%)",
