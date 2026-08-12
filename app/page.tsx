@@ -66,6 +66,7 @@ import {
 import type { LucideIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { TouchEvent } from "react";
+import { getSupabaseBrowserClient } from "../lib/supabase/client";
 
 type NavKey = "home" | "tasks" | "shop" | "games" | "profile";
 type TaskKey = "watch" | "surveys" | "downloads";
@@ -89,7 +90,11 @@ type DetailKey =
   | "stores"
   | null;
 type AuthStage = "welcome" | "mobile" | "otp" | "onboarding" | "authenticated";
-type DemoProfile = { name: string; mobile: string; interests: string[] };
+type OnboardingProfile = {
+  name: string;
+  birthDate: string;
+  interests: string[];
+};
 
 const navItems: { key: NavKey; label: string; icon: LucideIcon }[] = [
   { key: "home", label: "Home", icon: Home },
@@ -129,28 +134,53 @@ export default function App() {
   const unreadNotifications = 7 - readNotifications.length;
 
   useEffect(() => {
-    const hasDemoSession =
-      window.localStorage.getItem("glonni-demo-session") === "active";
-    const savedName = window.localStorage.getItem("glonni-demo-name");
-    const savedMobile = window.localStorage.getItem("glonni-demo-mobile");
-    const savedInterests = window.localStorage.getItem("glonni-demo-interests");
-    if (savedName) setUserName(savedName);
-    if (savedMobile) setUserMobile(savedMobile);
-    if (savedInterests) {
-      try {
-        setUserInterests(JSON.parse(savedInterests));
-      } catch {
-        setUserInterests(["Watch ads"]);
+    let active = true;
+    const supabase = getSupabaseBrowserClient();
+    const hydrateAuthenticatedUser = async (userId: string, phone?: string) => {
+      const { data: profile, error } = await supabase
+        .from("profiles")
+        .select("display_name, interests, onboarding_completed_at, status")
+        .eq("id", userId)
+        .single();
+      if (!active) return;
+      if (error || !profile) {
+        setAuthStage("welcome");
+        return;
       }
-    }
-    if (hasDemoSession) setAuthStage("authenticated");
+      if (profile.status !== "active") {
+        await supabase.auth.signOut();
+        setAuthStage("welcome");
+        return;
+      }
+      setUserMobile(phone ?? "");
+      if (!profile.onboarding_completed_at) {
+        setAuthStage("onboarding");
+        return;
+      }
+      setUserName(profile.display_name || "Glonni User");
+      setUserInterests(profile.interests?.length ? profile.interests : ["Watch ads"]);
+      setAuthStage("authenticated");
+    };
+    void supabase.auth.getUser().then(({ data }) => {
+      if (data.user) void hydrateAuthenticatedUser(data.user.id, data.user.phone);
+      else if (active) setAuthStage("welcome");
+      if (active) setAuthReady(true);
+    });
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        window.setTimeout(() => {
+          void hydrateAuthenticatedUser(session.user.id, session.user.phone);
+        }, 0);
+      } else if (active) {
+        setAuthStage("welcome");
+      }
+    });
     const savedTheme = window.localStorage.getItem("glonni-theme") || "light";
     document.documentElement.classList.toggle("dark", savedTheme === "dark");
     const savedTextScale = window.localStorage.getItem("glonni-text-scale") || "100";
     setTextScale(savedTextScale);
     document.documentElement.dataset.textScale = savedTextScale;
     document.documentElement.classList.toggle("high-contrast", window.localStorage.getItem("glonni-high-contrast") === "true");
-    setAuthReady(true);
     const updateConnection = () => setIsOnline(navigator.onLine);
     const connection = (navigator as Navigator & {
       connection?: EventTarget & { effectiveType?: string; saveData?: boolean };
@@ -170,6 +200,8 @@ export default function App() {
       });
     }
     return () => {
+      active = false;
+      authListener.subscription.unsubscribe();
       window.removeEventListener("online", updateConnection);
       window.removeEventListener("offline", updateConnection);
       connection?.removeEventListener("change", updateNetworkQuality);
@@ -230,23 +262,33 @@ export default function App() {
     return () => window.removeEventListener("keydown", closeTopLayer);
   }, [authReady, authStage, detail, searchOpen]);
 
-  const completeAuthentication = ({ name, mobile, interests }: DemoProfile) => {
+  const completeAuthentication = async ({ name, birthDate, interests }: OnboardingProfile) => {
     const cleanName = name.trim() || "Glonni User";
-    window.localStorage.setItem("glonni-demo-session", "active");
-    window.localStorage.setItem("glonni-demo-name", cleanName);
-    window.localStorage.setItem("glonni-demo-mobile", mobile);
-    window.localStorage.setItem(
-      "glonni-demo-interests",
-      JSON.stringify(interests),
-    );
+    const supabase = getSupabaseBrowserClient();
+    const { data: userData, error: userError } = await supabase.auth.getUser();
+    if (userError || !userData.user) throw new Error("Your session expired. Please request a new OTP.");
+    const acceptedAt = new Date().toISOString();
+    const { error } = await supabase
+      .from("profiles")
+      .update({
+        display_name: cleanName,
+        birth_date: birthDate,
+        interests,
+        terms_accepted_at: acceptedAt,
+        terms_version: "2026-08-12",
+        privacy_accepted_at: acceptedAt,
+        privacy_version: "2026-08-12",
+        onboarding_completed_at: acceptedAt,
+      })
+      .eq("id", userData.user.id);
+    if (error) throw new Error("We could not securely finish onboarding. Please try again.");
     setUserName(cleanName);
-    setUserMobile(mobile);
     setUserInterests(interests);
     setAuthStage("authenticated");
   };
 
-  const logout = () => {
-    window.localStorage.removeItem("glonni-demo-session");
+  const logout = async () => {
+    await getSupabaseBrowserClient().auth.signOut({ scope: "local" });
     setDetail(null);
     setActiveNav("home");
     setAuthStage("welcome");
@@ -461,14 +503,15 @@ function AuthFlow({
 }: {
   stage: AuthStage;
   setStage: (stage: AuthStage) => void;
-  onComplete: (profile: DemoProfile) => void;
+  onComplete: (profile: OnboardingProfile) => Promise<void>;
 }) {
   const [mobile, setMobile] = useState("");
   const [otp, setOtp] = useState("");
   const [name, setName] = useState("");
-  const [age, setAge] = useState(false);
+  const [birthDate, setBirthDate] = useState("");
   const [terms, setTerms] = useState(false);
   const [error, setError] = useState("");
+  const [pending, setPending] = useState(false);
   const [interests, setInterests] = useState(["Watch ads"]);
   const title =
     stage === "welcome"
@@ -486,22 +529,55 @@ function AuthFlow({
         : stage === "otp"
           ? `We sent a code to +91 ${mobile}.`
           : "Choose what you enjoy and confirm your account details.";
-  const requestOtp = () => {
+  const requestOtp = async () => {
     if (!/^[6-9]\d{9}$/.test(mobile))
       return setError("Enter a valid 10-digit Indian mobile number.");
     setError("");
+    setPending(true);
+    const { error: otpError } = await getSupabaseBrowserClient().auth.signInWithOtp({
+      phone: `+91${mobile}`,
+      options: { channel: "sms", shouldCreateUser: true },
+    });
+    setPending(false);
+    if (otpError) {
+      const providerUnavailable = /provider|unsupported|disabled/i.test(otpError.message);
+      return setError(
+        providerUnavailable
+          ? "Mobile OTP is awaiting SMS provider activation. No account was created."
+          : "We could not send the OTP. Please wait and try again.",
+      );
+    }
     setStage("otp");
   };
-  const verifyOtp = () => {
-    if (otp !== "123456") return setError("Use demo OTP 123456 to continue.");
+  const verifyOtp = async () => {
+    if (!/^\d{6}$/.test(otp)) return setError("Enter the 6-digit OTP.");
     setError("");
+    setPending(true);
+    const { error: verifyError } = await getSupabaseBrowserClient().auth.verifyOtp({
+      phone: `+91${mobile}`,
+      token: otp,
+      type: "sms",
+    });
+    setPending(false);
+    if (verifyError) return setError("That OTP is invalid or expired. Request a new code.");
     setStage("onboarding");
   };
-  const finish = () => {
+  const finish = async () => {
     if (name.trim().length < 2) return setError("Enter your name.");
-    if (!age || !terms)
-      return setError("Accept the age confirmation and terms to continue.");
-    onComplete({ name, mobile, interests });
+    if (!birthDate) return setError("Enter your date of birth.");
+    const cutoff = new Date();
+    cutoff.setFullYear(cutoff.getFullYear() - 18);
+    if (new Date(`${birthDate}T00:00:00`) > cutoff)
+      return setError("You must be at least 18 years old.");
+    if (!terms) return setError("Accept the Terms and Privacy Policy to continue.");
+    setPending(true);
+    try {
+      await onComplete({ name, birthDate, interests });
+    } catch (finishError) {
+      setError(finishError instanceof Error ? finishError.message : "Please try again.");
+    } finally {
+      setPending(false);
+    }
   };
   const toggle = (interest: string) =>
     setInterests((current) =>
@@ -563,8 +639,7 @@ function AuthFlow({
                 I already have an account
               </button>
               <p className="text-center text-[11px] leading-5 text-slate-400">
-                Frontend preview. Real OTP and secure sessions will use Supabase
-                during backend integration.
+                Secure sign-in is provided by Supabase. Never share your OTP.
               </p>
             </>
           )}
@@ -596,7 +671,9 @@ function AuthFlow({
                 Your number is used for account access and reward security.
               </p>
               <AuthError message={error} />
-              <PrimaryButton onClick={requestOtp}>Send OTP</PrimaryButton>
+              <PrimaryButton onClick={requestOtp} disabled={pending}>
+                {pending ? "Sending securely…" : "Send OTP"}
+              </PrimaryButton>
             </>
           )}
           {stage === "otp" && (
@@ -621,14 +698,18 @@ function AuthFlow({
                 </span>
               </label>
               <div className="rounded-2xl bg-amber-50 p-3 text-center text-xs text-amber-800">
-                Demo OTP: <b className="tracking-widest">123456</b>
+                OTPs expire and can be used only once. Glonni support will never ask for your code.
               </div>
               <AuthError message={error} />
-              <PrimaryButton onClick={verifyOtp}>
-                Verify & continue
+              <PrimaryButton onClick={verifyOtp} disabled={pending}>
+                {pending ? "Verifying…" : "Verify & continue"}
               </PrimaryButton>
               <button
-                onClick={() => setOtp("")}
+                onClick={() => {
+                  setOtp("");
+                  void requestOtp();
+                }}
+                disabled={pending}
                 className="flex w-full items-center justify-center gap-2 text-xs font-extrabold text-violet-700"
               >
                 <RotateCcw className="h-4 w-4" />
@@ -655,6 +736,21 @@ function AuthFlow({
                   />
                 </span>
               </label>
+              <label className="block">
+                <span className="text-xs font-extrabold">Date of birth</span>
+                <input
+                  type="date"
+                  value={birthDate}
+                  onChange={(event) => {
+                    setBirthDate(event.target.value);
+                    setError("");
+                  }}
+                  className="mt-2 w-full rounded-2xl border border-[#e7e2ef] bg-[#faf9fc] px-4 py-4 text-sm font-bold outline-none focus:border-violet-500"
+                />
+                <span className="mt-2 block text-[11px] leading-5 text-slate-400">
+                  Glonni Ads is currently available only to users aged 18 or older.
+                </span>
+              </label>
               <div>
                 <p className="text-xs font-extrabold">What interests you?</p>
                 <div className="mt-2 flex flex-wrap gap-2">
@@ -671,18 +767,16 @@ function AuthFlow({
                 </div>
               </div>
               <div className="space-y-3 rounded-2xl bg-[#faf9fc] p-4">
-                <Consent checked={age} onChange={setAge}>
-                  I confirm that I am 18 years or older.
-                </Consent>
                 <Consent checked={terms} onChange={setTerms}>
                   I agree to the Terms of Use, Privacy Policy and Reward Rules.
                 </Consent>
               </div>
               <AuthError message={error} />
-              <PrimaryButton onClick={finish}>Create my account</PrimaryButton>
+              <PrimaryButton onClick={finish} disabled={pending}>
+                {pending ? "Securing account…" : "Finish secure setup"}
+              </PrimaryButton>
               <p className="text-center text-[11px] leading-5 text-slate-400">
-                This creates a local demo session only. No personal information
-                is sent to a server.
+                Your consent time and policy versions are recorded for account security.
               </p>
             </>
           )}
@@ -6219,15 +6313,18 @@ function DetailShell({
 }
 function PrimaryButton({
   onClick,
+  disabled = false,
   children,
 }: {
-  onClick: () => void;
+  onClick: () => void | Promise<void>;
+  disabled?: boolean;
   children: React.ReactNode;
 }) {
   return (
     <button
       onClick={onClick}
-      className={`interactive-card w-full rounded-xl bg-gradient-to-r ${purple} py-3.5 text-sm font-extrabold text-white shadow-md`}
+      disabled={disabled}
+      className={`interactive-card w-full rounded-xl bg-gradient-to-r ${purple} py-3.5 text-sm font-extrabold text-white shadow-md disabled:cursor-not-allowed disabled:opacity-60`}
     >
       {children}
     </button>
