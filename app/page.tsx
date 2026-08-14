@@ -105,6 +105,9 @@ const navItems: { key: NavKey; label: string; icon: LucideIcon }[] = [
 ];
 
 const purple = "from-[#7357f2] via-[#6844e4] to-[#542bc9]";
+const DEMO_MOBILE = "9867654357";
+const DEMO_OTP = "123456";
+const DEMO_SESSION_KEY = "glonni-demo-session";
 
 export default function App() {
   const [authStage, setAuthStage] = useState<AuthStage>("welcome");
@@ -136,6 +139,15 @@ export default function App() {
   useEffect(() => {
     let active = true;
     const supabase = getSupabaseBrowserClient();
+    const demoSessionActive =
+      window.localStorage.getItem(DEMO_SESSION_KEY) === "active";
+    if (demoSessionActive) {
+      setUserName("Shaneel");
+      setUserMobile(DEMO_MOBILE);
+      setUserInterests(["Watch ads"]);
+      setAuthStage("authenticated");
+      setAuthReady(true);
+    }
     const hydrateAuthenticatedUser = async (userId: string, phone?: string) => {
       const { data: profile, error } = await supabase
         .from("profiles")
@@ -162,11 +174,13 @@ export default function App() {
       setAuthStage("authenticated");
     };
     void supabase.auth.getUser().then(({ data }) => {
+      if (demoSessionActive) return;
       if (data.user) void hydrateAuthenticatedUser(data.user.id, data.user.phone);
       else if (active) setAuthStage("welcome");
       if (active) setAuthReady(true);
     });
     const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (demoSessionActive) return;
       if (session?.user) {
         window.setTimeout(() => {
           void hydrateAuthenticatedUser(session.user.id, session.user.phone);
@@ -288,6 +302,7 @@ export default function App() {
   };
 
   const logout = async () => {
+    window.localStorage.removeItem(DEMO_SESSION_KEY);
     await getSupabaseBrowserClient().auth.signOut({ scope: "local" });
     setDetail(null);
     setActiveNav("home");
@@ -533,6 +548,10 @@ function AuthFlow({
     if (!/^[6-9]\d{9}$/.test(mobile))
       return setError("Enter a valid 10-digit Indian mobile number.");
     setError("");
+    if (mobile === DEMO_MOBILE) {
+      setStage("otp");
+      return;
+    }
     setPending(true);
     const { error: otpError } = await getSupabaseBrowserClient().auth.signInWithOtp({
       phone: `+91${mobile}`,
@@ -552,6 +571,12 @@ function AuthFlow({
   const verifyOtp = async () => {
     if (!/^\d{6}$/.test(otp)) return setError("Enter the 6-digit OTP.");
     setError("");
+    if (mobile === DEMO_MOBILE) {
+      if (otp !== DEMO_OTP) return setError("Use demo OTP 123456 to continue.");
+      window.localStorage.setItem(DEMO_SESSION_KEY, "active");
+      setStage("authenticated");
+      return;
+    }
     setPending(true);
     const { error: verifyError } = await getSupabaseBrowserClient().auth.verifyOtp({
       phone: `+91${mobile}`,
@@ -698,7 +723,11 @@ function AuthFlow({
                 </span>
               </label>
               <div className="rounded-2xl bg-amber-50 p-3 text-center text-xs text-amber-800">
-                OTPs expire and can be used only once. Glonni support will never ask for your code.
+                {mobile === DEMO_MOBILE ? (
+                  <>Demo OTP: <b className="tracking-widest">{DEMO_OTP}</b></>
+                ) : (
+                  <>OTPs expire and can be used only once. Glonni support will never ask for your code.</>
+                )}
               </div>
               <AuthError message={error} />
               <PrimaryButton onClick={verifyOtp} disabled={pending}>
