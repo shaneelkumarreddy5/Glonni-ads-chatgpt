@@ -9,17 +9,21 @@ export async function middleware(request: NextRequest) {
   const supabase = createServerClient(url, publishableKey, {
     cookies: {
       getAll: () => request.cookies.getAll(),
-      setAll: (items) => {
+      setAll: (items, cacheHeaders) => {
         items.forEach(({ name, value }) => request.cookies.set(name, value));
         response = NextResponse.next({ request });
         items.forEach(({ name, value, options }) =>
           response.cookies.set(name, value, options),
+        );
+        Object.entries(cacheHeaders).forEach(([key, value]) =>
+          response.headers.set(key, value),
         );
       },
     },
   });
 
   await supabase.auth.getClaims();
+  response.headers.set("Cache-Control", "private, no-store");
   return response;
 }
 
