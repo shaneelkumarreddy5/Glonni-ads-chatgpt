@@ -1,16 +1,27 @@
 "use client";
 
 import { FormEvent, useCallback, useEffect, useState } from "react";
-import { BadgeCheck, KeyRound, LoaderCircle, LockKeyhole, ShieldAlert } from "lucide-react";
+import { BadgeCheck, KeyRound, LoaderCircle, LockKeyhole, Mail, ShieldAlert } from "lucide-react";
 import { getSupabaseBrowserClient } from "../../lib/supabase/client";
 
-type Screen = "loading" | "signin" | "forbidden" | "enroll" | "verify" | "ready";
+type Screen =
+  | "loading"
+  | "signin"
+  | "request-reset"
+  | "reset-sent"
+  | "set-password"
+  | "forbidden"
+  | "enroll"
+  | "verify"
+  | "ready";
 type AdminAccess = { authorized: boolean; roles: string[] };
 
 export default function AdminAccessPage() {
   const [screen, setScreen] = useState<Screen>("loading");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [code, setCode] = useState("");
   const [factorId, setFactorId] = useState("");
   const [qrCode, setQrCode] = useState("");
@@ -56,7 +67,23 @@ export default function AdminAccessPage() {
   }, []);
 
   useEffect(() => {
-    void prepareAccess();
+    let active = true;
+    const initialize = async () => {
+      const recoveryMode = new URL(window.location.href).searchParams.get("mode") === "recovery";
+      if (!recoveryMode) return prepareAccess();
+
+      const { data } = await getSupabaseBrowserClient().auth.getUser();
+      if (!active) return;
+      if (data.user) return setScreen("set-password");
+
+      setError("This password link is invalid or expired. Request a new secure link.");
+      setScreen("signin");
+    };
+
+    void initialize();
+    return () => {
+      active = false;
+    };
   }, [prepareAccess]);
 
   const signIn = async (event: FormEvent) => {
@@ -69,6 +96,48 @@ export default function AdminAccessPage() {
     });
     setPending(false);
     if (signInError) return setError("The email or password is incorrect.");
+    setScreen("loading");
+    await prepareAccess();
+  };
+
+  const requestPasswordReset = async (event: FormEvent) => {
+    event.preventDefault();
+    setPending(true);
+    setError("");
+    const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent("/admin-access?mode=recovery")}`;
+    const { error: resetError } = await getSupabaseBrowserClient().auth.resetPasswordForEmail(
+      email.trim(),
+      { redirectTo },
+    );
+    setPending(false);
+    if (resetError) return setError("A secure password link could not be sent. Please wait and try again.");
+    setScreen("reset-sent");
+  };
+
+  const setInitialPassword = async (event: FormEvent) => {
+    event.preventDefault();
+    setError("");
+    const strongPassword =
+      newPassword.length >= 14 &&
+      /[a-z]/.test(newPassword) &&
+      /[A-Z]/.test(newPassword) &&
+      /\d/.test(newPassword) &&
+      /[^A-Za-z0-9]/.test(newPassword);
+    if (!strongPassword) {
+      return setError("Use at least 14 characters with uppercase, lowercase, a number and a symbol.");
+    }
+    if (newPassword !== confirmPassword) return setError("The two passwords do not match.");
+
+    setPending(true);
+    const { error: updateError } = await getSupabaseBrowserClient().auth.updateUser({
+      password: newPassword,
+    });
+    setPending(false);
+    if (updateError) return setError("Your password could not be saved. Request a new secure link.");
+
+    setNewPassword("");
+    setConfirmPassword("");
+    window.history.replaceState({}, "", "/admin-access");
     setScreen("loading");
     await prepareAccess();
   };
@@ -116,6 +185,30 @@ export default function AdminAccessPage() {
             <label className="block text-xs font-bold text-slate-600">Password<input required type="password" autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} className="mt-2 w-full rounded-xl border border-slate-200 p-3 text-sm outline-none focus:border-violet-500" /></label>
             <ErrorMessage message={error} />
             <button disabled={pending} className="w-full rounded-xl bg-violet-600 py-3 text-sm font-extrabold text-white disabled:opacity-50">{pending ? "Signing in…" : "Continue securely"}</button>
+            <button type="button" onClick={() => { setError(""); setPassword(""); setScreen("request-reset"); }} className="w-full rounded-xl border border-violet-200 py-3 text-sm font-bold text-violet-700">Set or reset password</button>
+          </form>
+        )}
+
+        {screen === "request-reset" && (
+          <form onSubmit={requestPasswordReset} className="mt-7 space-y-4">
+            <Status icon={Mail} title="Create your admin password" body="We will send a one-time secure link to the pre-authorized administrator email." />
+            <label className="block text-xs font-bold text-slate-600">Admin email<input required type="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} className="mt-2 w-full rounded-xl border border-slate-200 p-3 text-sm outline-none focus:border-violet-500" /></label>
+            <ErrorMessage message={error} />
+            <button disabled={pending} className="w-full rounded-xl bg-violet-600 py-3 text-sm font-extrabold text-white disabled:opacity-50">{pending ? "Sending secure link…" : "Send secure link"}</button>
+            <button type="button" onClick={() => { setError(""); setScreen("signin"); }} className="w-full py-2 text-sm font-bold text-slate-500">Back to sign in</button>
+          </form>
+        )}
+
+        {screen === "reset-sent" && <><Status icon={Mail} title="Check your email" body="If this address belongs to an administrator, a one-time password link has been sent. Open it on this device." /><button onClick={() => setScreen("signin")} className="mt-5 w-full rounded-xl border border-slate-200 py-3 text-sm font-bold">Return to sign in</button></>}
+
+        {screen === "set-password" && (
+          <form onSubmit={setInitialPassword} className="mt-7 space-y-4">
+            <Status icon={KeyRound} title="Choose a strong password" body="This password protects the owner account before mandatory authenticator verification." />
+            <label className="block text-xs font-bold text-slate-600">New password<input required type="password" autoComplete="new-password" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} className="mt-2 w-full rounded-xl border border-slate-200 p-3 text-sm outline-none focus:border-violet-500" /></label>
+            <label className="block text-xs font-bold text-slate-600">Confirm password<input required type="password" autoComplete="new-password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} className="mt-2 w-full rounded-xl border border-slate-200 p-3 text-sm outline-none focus:border-violet-500" /></label>
+            <p className="rounded-xl bg-slate-50 p-3 text-xs leading-5 text-slate-600">Minimum 14 characters with uppercase, lowercase, a number and a symbol. Do not reuse another account password.</p>
+            <ErrorMessage message={error} />
+            <button disabled={pending} className="w-full rounded-xl bg-violet-600 py-3 text-sm font-extrabold text-white disabled:opacity-50">{pending ? "Saving password…" : "Save password and continue"}</button>
           </form>
         )}
 
@@ -128,7 +221,7 @@ export default function AdminAccessPage() {
             {/* Supabase returns a trusted data URL for this newly created TOTP factor. */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
             {qrCode && <img src={qrCode} alt="Authenticator setup QR code" className="mx-auto h-48 w-48 rounded-xl border p-2" />}
-            {secret && <p className="break-all rounded-xl bg-slate-50 p-3 text-center font-mono text-xs">{secret}</p>}
+            {secret && <details className="rounded-xl bg-slate-50 p-3 text-xs text-slate-600"><summary className="cursor-pointer font-bold">Cannot scan? Show setup key</summary><p className="mt-3 break-all text-center font-mono">{secret}</p></details>}
             <CodeInput value={code} onChange={setCode} />
             <ErrorMessage message={error} />
             <button disabled={pending} className="w-full rounded-xl bg-violet-600 py-3 text-sm font-extrabold text-white disabled:opacity-50">Verify and activate MFA</button>
