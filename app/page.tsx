@@ -64,7 +64,7 @@ import {
   MousePointer2,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { TouchEvent } from "react";
 import { getSupabaseBrowserClient } from "../lib/supabase/client";
 
@@ -94,6 +94,11 @@ type OnboardingProfile = {
   name: string;
   birthDate: string;
   interests: string[];
+};
+type OnboardingResult = {
+  display_name: string;
+  interests: string[];
+  onboarding_completed_at: string;
 };
 
 const navItems: { key: NavKey; label: string; icon: LucideIcon }[] = [
@@ -139,6 +144,32 @@ export default function App() {
   const restoringHistory = useRef(false);
   const unreadNotifications = 7 - readNotifications.length;
 
+  const hydrateAuthenticatedUser = useCallback(async (userId: string, phone?: string) => {
+    const supabase = getSupabaseBrowserClient();
+    const { data: profile, error } = await supabase
+      .from("profiles")
+      .select("display_name, interests, onboarding_completed_at, status")
+      .eq("id", userId)
+      .single();
+    if (error || !profile) {
+      setAuthStage("welcome");
+      return;
+    }
+    if (profile.status !== "active") {
+      await supabase.auth.signOut();
+      setAuthStage("welcome");
+      return;
+    }
+    setUserMobile(phone ?? "");
+    if (!profile.onboarding_completed_at) {
+      setAuthStage("onboarding");
+      return;
+    }
+    setUserName(profile.display_name || "Glonni User");
+    setUserInterests(profile.interests?.length ? profile.interests : ["Watch ads"]);
+    setAuthStage("authenticated");
+  }, []);
+
   useEffect(() => {
     let active = true;
     const supabase = getSupabaseBrowserClient();
@@ -153,34 +184,9 @@ export default function App() {
       setAuthStage("authenticated");
       setAuthReady(true);
     }
-    const hydrateAuthenticatedUser = async (userId: string, phone?: string) => {
-      const { data: profile, error } = await supabase
-        .from("profiles")
-        .select("display_name, interests, onboarding_completed_at, status")
-        .eq("id", userId)
-        .single();
-      if (!active) return;
-      if (error || !profile) {
-        setAuthStage("welcome");
-        return;
-      }
-      if (profile.status !== "active") {
-        await supabase.auth.signOut();
-        setAuthStage("welcome");
-        return;
-      }
-      setUserMobile(phone ?? "");
-      if (!profile.onboarding_completed_at) {
-        setAuthStage("onboarding");
-        return;
-      }
-      setUserName(profile.display_name || "Glonni User");
-      setUserInterests(profile.interests?.length ? profile.interests : ["Watch ads"]);
-      setAuthStage("authenticated");
-    };
     void supabase.auth.getUser().then(({ data }) => {
       if (demoSessionActive) return;
-      if (data.user) void hydrateAuthenticatedUser(data.user.id, data.user.phone);
+      if (data.user && active) void hydrateAuthenticatedUser(data.user.id, data.user.phone);
       else if (active) setAuthStage("welcome");
       if (active) setAuthReady(true);
     });
@@ -226,7 +232,7 @@ export default function App() {
       connection?.removeEventListener("change", updateNetworkQuality);
       if (toastTimer.current) window.clearTimeout(toastTimer.current);
     };
-  }, []);
+  }, [hydrateAuthenticatedUser]);
 
   useEffect(() => {
     if (!authReady || authStage !== "authenticated") return;
@@ -284,25 +290,17 @@ export default function App() {
   const completeAuthentication = async ({ name, birthDate, interests }: OnboardingProfile) => {
     const cleanName = name.trim() || "Glonni User";
     const supabase = getSupabaseBrowserClient();
-    const { data: userData, error: userError } = await supabase.auth.getUser();
-    if (userError || !userData.user) throw new Error("Your session expired. Please request a new OTP.");
-    const acceptedAt = new Date().toISOString();
-    const { error } = await supabase
-      .from("profiles")
-      .update({
-        display_name: cleanName,
-        birth_date: birthDate,
-        interests,
-        terms_accepted_at: acceptedAt,
-        terms_version: "2026-08-12",
-        privacy_accepted_at: acceptedAt,
-        privacy_version: "2026-08-12",
-        onboarding_completed_at: acceptedAt,
-      })
-      .eq("id", userData.user.id);
+    const { data, error } = await supabase.rpc("complete_my_onboarding", {
+      p_display_name: cleanName,
+      p_birth_date: birthDate,
+      p_interests: interests,
+      p_accept_terms: true,
+      p_accept_privacy: true,
+    });
     if (error) throw new Error("We could not securely finish onboarding. Please try again.");
-    setUserName(cleanName);
-    setUserInterests(interests);
+    const completed = data as OnboardingResult | null;
+    setUserName(completed?.display_name || cleanName);
+    setUserInterests(completed?.interests?.length ? completed.interests : interests);
     setAuthStage("authenticated");
   };
 
@@ -364,6 +362,7 @@ export default function App() {
         stage={authStage}
         setStage={setAuthStage}
         onComplete={completeAuthentication}
+        onVerified={hydrateAuthenticatedUser}
       />
     );
 
@@ -520,10 +519,12 @@ function AuthFlow({
   stage,
   setStage,
   onComplete,
+  onVerified,
 }: {
   stage: AuthStage;
   setStage: (stage: AuthStage) => void;
   onComplete: (profile: OnboardingProfile) => Promise<void>;
+  onVerified: (userId: string, phone?: string) => Promise<void>;
 }) {
   const [mobile, setMobile] = useState("");
   const [otp, setOtp] = useState("");
@@ -532,7 +533,13 @@ function AuthFlow({
   const [terms, setTerms] = useState(false);
   const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
+  const [resendSeconds, setResendSeconds] = useState(0);
   const [interests, setInterests] = useState(["Watch ads"]);
+  useEffect(() => {
+    if (resendSeconds <= 0) return;
+    const timer = window.setTimeout(() => setResendSeconds((seconds) => Math.max(0, seconds - 1)), 1000);
+    return () => window.clearTimeout(timer);
+  }, [resendSeconds]);
   const title =
     stage === "welcome"
       ? "Earn from everyday moments."
@@ -552,8 +559,11 @@ function AuthFlow({
   const requestOtp = async () => {
     if (!/^[6-9]\d{9}$/.test(mobile))
       return setError("Enter a valid 10-digit Indian mobile number.");
+    if (resendSeconds > 0)
+      return setError(`Please wait ${resendSeconds} seconds before requesting another OTP.`);
     setError("");
     if (DEMO_AUTH_ENABLED && mobile === DEMO_MOBILE) {
+      setResendSeconds(60);
       setStage("otp");
       return;
     }
@@ -565,12 +575,16 @@ function AuthFlow({
     setPending(false);
     if (otpError) {
       const providerUnavailable = /provider|unsupported|disabled/i.test(otpError.message);
+      const rateLimited = otpError.status === 429 || /rate|too many/i.test(otpError.message);
       return setError(
-        providerUnavailable
+        rateLimited
+          ? "Too many OTP requests. Please wait before trying again."
+          : providerUnavailable
           ? "Mobile OTP is awaiting SMS provider activation. No account was created."
           : "We could not send the OTP. Please wait and try again.",
       );
     }
+    setResendSeconds(60);
     setStage("otp");
   };
   const verifyOtp = async () => {
@@ -583,14 +597,20 @@ function AuthFlow({
       return;
     }
     setPending(true);
-    const { error: verifyError } = await getSupabaseBrowserClient().auth.verifyOtp({
+    const { data: verified, error: verifyError } = await getSupabaseBrowserClient().auth.verifyOtp({
       phone: `+91${mobile}`,
       token: otp,
       type: "sms",
     });
     setPending(false);
-    if (verifyError) return setError("That OTP is invalid or expired. Request a new code.");
-    setStage("onboarding");
+    if (verifyError) {
+      const rateLimited = verifyError.status === 429 || /rate|too many/i.test(verifyError.message);
+      return setError(rateLimited
+        ? "Too many verification attempts. Please wait and request a new OTP."
+        : "That OTP is invalid or expired. Request a new code.");
+    }
+    if (!verified.user) return setError("Your secure session could not be created. Please try again.");
+    await onVerified(verified.user.id, verified.user.phone);
   };
   const finish = async () => {
     if (name.trim().length < 2) return setError("Enter your name.");
@@ -743,11 +763,11 @@ function AuthFlow({
                   setOtp("");
                   void requestOtp();
                 }}
-                disabled={pending}
+                disabled={pending || resendSeconds > 0}
                 className="flex w-full items-center justify-center gap-2 text-xs font-extrabold text-violet-700"
               >
                 <RotateCcw className="h-4 w-4" />
-                Resend code
+                {resendSeconds > 0 ? `Resend in ${resendSeconds}s` : "Resend code"}
               </button>
             </>
           )}
