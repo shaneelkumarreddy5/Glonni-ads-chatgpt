@@ -67,6 +67,7 @@ import type { LucideIcon } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { TouchEvent } from "react";
 import { getSupabaseBrowserClient } from "../lib/supabase/client";
+import { recordDeviceSecurityObservation } from "../lib/security/device-observation";
 
 type NavKey = "home" | "tasks" | "shop" | "games" | "profile";
 type TaskKey = "watch" | "surveys" | "downloads";
@@ -160,6 +161,7 @@ export default function App() {
       setAuthStage("welcome");
       return;
     }
+    void recordDeviceSecurityObservation(supabase, userId);
     setUserMobile(phone ?? "");
     if (!profile.onboarding_completed_at) {
       setAuthStage("onboarding");
