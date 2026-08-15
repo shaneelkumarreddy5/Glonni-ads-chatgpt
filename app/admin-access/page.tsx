@@ -8,7 +8,7 @@ type Screen =
   | "loading"
   | "signin"
   | "request-reset"
-  | "reset-sent"
+  | "verify-recovery"
   | "set-password"
   | "forbidden"
   | "enroll"
@@ -22,6 +22,7 @@ export default function AdminAccessPage() {
   const [password, setPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [recoveryCode, setRecoveryCode] = useState("");
   const [code, setCode] = useState("");
   const [factorId, setFactorId] = useState("");
   const [qrCode, setQrCode] = useState("");
@@ -76,7 +77,7 @@ export default function AdminAccessPage() {
       if (!active) return;
       if (data.user) return setScreen("set-password");
 
-      setError("This password link is invalid or expired. Request a new secure link.");
+      setError("This password link is invalid or expired. Request a new recovery code.");
       setScreen("signin");
     };
 
@@ -104,14 +105,31 @@ export default function AdminAccessPage() {
     event.preventDefault();
     setPending(true);
     setError("");
-    const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent("/admin-access?mode=recovery")}`;
-    const { error: resetError } = await getSupabaseBrowserClient().auth.resetPasswordForEmail(
-      email.trim(),
-      { redirectTo },
-    );
+    const { error: resetError } = await getSupabaseBrowserClient().auth.resetPasswordForEmail(email.trim());
     setPending(false);
-    if (resetError) return setError("A secure password link could not be sent. Please wait and try again.");
-    setScreen("reset-sent");
+    if (resetError) return setError("A recovery code could not be sent. Please wait and try again.");
+    setRecoveryCode("");
+    setScreen("verify-recovery");
+  };
+
+  const verifyRecoveryCode = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!/^\d{6}$/.test(recoveryCode)) return setError("Enter the 6-digit code from your email.");
+
+    setPending(true);
+    setError("");
+    const { error: verificationError } = await getSupabaseBrowserClient().auth.verifyOtp({
+      email: email.trim(),
+      token: recoveryCode,
+      type: "recovery",
+    });
+    setPending(false);
+    if (verificationError) {
+      return setError("That code is invalid or expired. Request a new code and use only the newest email.");
+    }
+
+    setRecoveryCode("");
+    setScreen("set-password");
   };
 
   const setInitialPassword = async (event: FormEvent) => {
@@ -133,7 +151,7 @@ export default function AdminAccessPage() {
       password: newPassword,
     });
     setPending(false);
-    if (updateError) return setError("Your password could not be saved. Request a new secure link.");
+    if (updateError) return setError("Your password could not be saved. Request a new recovery code.");
 
     setNewPassword("");
     setConfirmPassword("");
@@ -191,15 +209,24 @@ export default function AdminAccessPage() {
 
         {screen === "request-reset" && (
           <form onSubmit={requestPasswordReset} className="mt-7 space-y-4">
-            <Status icon={Mail} title="Create your admin password" body="We will send a one-time secure link to the pre-authorized administrator email." />
+            <Status icon={Mail} title="Create your admin password" body="We will send a one-time six-digit code to the pre-authorized administrator email." />
             <label className="block text-xs font-bold text-slate-600">Admin email<input required type="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} className="mt-2 w-full rounded-xl border border-slate-200 p-3 text-sm outline-none focus:border-violet-500" /></label>
             <ErrorMessage message={error} />
-            <button disabled={pending} className="w-full rounded-xl bg-violet-600 py-3 text-sm font-extrabold text-white disabled:opacity-50">{pending ? "Sending secure link…" : "Send secure link"}</button>
+            <button disabled={pending} className="w-full rounded-xl bg-violet-600 py-3 text-sm font-extrabold text-white disabled:opacity-50">{pending ? "Sending code…" : "Send recovery code"}</button>
             <button type="button" onClick={() => { setError(""); setScreen("signin"); }} className="w-full py-2 text-sm font-bold text-slate-500">Back to sign in</button>
           </form>
         )}
 
-        {screen === "reset-sent" && <><Status icon={Mail} title="Check your email" body="If this address belongs to an administrator, a one-time password link has been sent. Open it on this device." /><button onClick={() => setScreen("signin")} className="mt-5 w-full rounded-xl border border-slate-200 py-3 text-sm font-bold">Return to sign in</button></>}
+        {screen === "verify-recovery" && (
+          <form onSubmit={verifyRecoveryCode} className="mt-7 space-y-4">
+            <Status icon={Mail} title="Enter your recovery code" body="We sent a six-digit code to the administrator email. Enter it below; do not share it with anyone." />
+            <input aria-label="Six-digit email recovery code" inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={recoveryCode} onChange={(event) => setRecoveryCode(event.target.value.replace(/\D/g, ""))} placeholder="000000" className="w-full rounded-xl border border-slate-200 p-3 text-center text-xl font-black tracking-[0.35em] outline-none focus:border-violet-500" />
+            <ErrorMessage message={error} />
+            <button disabled={pending} className="w-full rounded-xl bg-violet-600 py-3 text-sm font-extrabold text-white disabled:opacity-50">{pending ? "Verifying code…" : "Verify code"}</button>
+            <button type="button" disabled={pending} onClick={() => { setError(""); setScreen("request-reset"); }} className="w-full rounded-xl border border-violet-200 py-3 text-sm font-bold text-violet-700 disabled:opacity-50">Request a new code</button>
+            <button type="button" onClick={() => { setError(""); setScreen("signin"); }} className="w-full py-2 text-sm font-bold text-slate-500">Back to sign in</button>
+          </form>
+        )}
 
         {screen === "set-password" && (
           <form onSubmit={setInitialPassword} className="mt-7 space-y-4">
