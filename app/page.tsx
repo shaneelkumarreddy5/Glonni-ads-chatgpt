@@ -105,6 +105,9 @@ const navItems: { key: NavKey; label: string; icon: LucideIcon }[] = [
 ];
 
 const purple = "from-[#7357f2] via-[#6844e4] to-[#542bc9]";
+const DEMO_AUTH_ENABLED =
+  process.env.NODE_ENV !== "production" &&
+  process.env.NEXT_PUBLIC_ENABLE_DEMO_AUTH === "true";
 const DEMO_MOBILE = "9867654357";
 const DEMO_OTP = "123456";
 const DEMO_SESSION_KEY = "glonni-demo-session";
@@ -140,7 +143,9 @@ export default function App() {
     let active = true;
     const supabase = getSupabaseBrowserClient();
     const demoSessionActive =
+      DEMO_AUTH_ENABLED &&
       window.localStorage.getItem(DEMO_SESSION_KEY) === "active";
+    if (!DEMO_AUTH_ENABLED) window.localStorage.removeItem(DEMO_SESSION_KEY);
     if (demoSessionActive) {
       setUserName("Shaneel");
       setUserMobile(DEMO_MOBILE);
@@ -548,7 +553,7 @@ function AuthFlow({
     if (!/^[6-9]\d{9}$/.test(mobile))
       return setError("Enter a valid 10-digit Indian mobile number.");
     setError("");
-    if (mobile === DEMO_MOBILE) {
+    if (DEMO_AUTH_ENABLED && mobile === DEMO_MOBILE) {
       setStage("otp");
       return;
     }
@@ -571,7 +576,7 @@ function AuthFlow({
   const verifyOtp = async () => {
     if (!/^\d{6}$/.test(otp)) return setError("Enter the 6-digit OTP.");
     setError("");
-    if (mobile === DEMO_MOBILE) {
+    if (DEMO_AUTH_ENABLED && mobile === DEMO_MOBILE) {
       if (otp !== DEMO_OTP) return setError("Use demo OTP 123456 to continue.");
       window.localStorage.setItem(DEMO_SESSION_KEY, "active");
       setStage("authenticated");
@@ -723,7 +728,7 @@ function AuthFlow({
                 </span>
               </label>
               <div className="rounded-2xl bg-amber-50 p-3 text-center text-xs text-amber-800">
-                {mobile === DEMO_MOBILE ? (
+                {DEMO_AUTH_ENABLED && mobile === DEMO_MOBILE ? (
                   <>Demo OTP: <b className="tracking-widest">{DEMO_OTP}</b></>
                 ) : (
                   <>OTPs expire and can be used only once. Glonni support will never ask for your code.</>
