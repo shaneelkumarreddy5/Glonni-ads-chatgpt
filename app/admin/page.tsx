@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FraudRiskControl } from "./fraud-risk-control";
 import { ProviderIntegrations } from "./provider-integrations";
 import { CommunicationsControl } from "./communications-control";
+import { CommerceIntegrations } from "./commerce-integrations";
 
 type NavItem = { label: string; icon: typeof LayoutDashboard; badge?: string };
 type NavGroup = { label?: string; items: NavItem[] };
@@ -3343,7 +3344,7 @@ export default function AdminDashboardPage() {
             ) : activeView === "Games" ? (
               <GamesManagement action={action} />
             ) : activeView === "Shop & Earn" ? (
-              <ShopEarnManagement action={action} />
+              <CommerceIntegrations action={action} />
             ) : activeView === "Stores & Links" ? (
               <StoresLinksManagement action={action} />
             ) : activeView === "Referrals" ? (
@@ -3696,7 +3697,7 @@ export default function AdminDashboardPage() {
           </div>
           <footer className="mx-auto mt-8 flex max-w-[1500px] flex-col gap-2 border-t border-slate-200 py-5 text-[11px] text-slate-400 sm:flex-row sm:items-center sm:justify-between">
             <span>Glonni Ads Admin · UX Completion Step 6</span>
-            <span>Fraud, earning and communications gateways are live · External providers remain disabled pending approval and credentials</span>
+            <span>Fraud, earning, communications and commerce gateways are live · External providers remain disabled pending approval and credentials</span>
           </footer>
         </main>
       </div>
