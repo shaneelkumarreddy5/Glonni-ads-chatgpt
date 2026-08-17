@@ -4,6 +4,7 @@
 import { Activity, ArrowDownRight, ArrowUpRight, BadgeIndianRupee, Bell, Bot, CalendarDays, CheckCircle2, ChevronDown, CircleAlert, Clock3, Download, ExternalLink, FileText, Gamepad2, Gift, HandCoins, Headphones, LayoutDashboard, Link2, LockKeyhole, LogOut, Menu, MonitorPlay, Moon, MoreHorizontal, PackageCheck, PanelLeftClose, Pin, PinOff, Plus, RefreshCw, Search, Send, Settings, ShieldAlert, ShieldCheck, ShoppingBag, SlidersHorizontal, Sparkles, Store, TrendingUp, UserCheck, Users, WalletCards, X, Ban, ChevronLeft, ChevronRight, Copy, Eye, Filter, Mail, MapPin, Phone, RotateCcw, Smartphone, UserRound, UserX, Wifi } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FraudRiskControl } from "./fraud-risk-control";
+import { ProviderIntegrations } from "./provider-integrations";
 
 type NavItem = { label: string; icon: typeof LayoutDashboard; badge?: string };
 type NavGroup = { label?: string; items: NavItem[] };
@@ -3333,7 +3334,7 @@ export default function AdminDashboardPage() {
             ) : activeView === "Fraud & Risk" ? (
               <FraudRiskControl action={action} />
             ) : activeView === "Ad Networks" ? (
-              <AdNetworksManagement action={action} />
+              <ProviderIntegrations action={action} />
             ) : activeView === "Surveys" ? (
               <SurveysManagement action={action} />
             ) : activeView === "App Install Offers" ? (
@@ -3694,7 +3695,7 @@ export default function AdminDashboardPage() {
           </div>
           <footer className="mx-auto mt-8 flex max-w-[1500px] flex-col gap-2 border-t border-slate-200 py-5 text-[11px] text-slate-400 sm:flex-row sm:items-center sm:justify-between">
             <span>Glonni Ads Admin · UX Completion Step 6</span>
-            <span>Fraud &amp; Risk is live · Provider, payment and messaging workspaces remain in safe preview mode</span>
+            <span>Fraud &amp; Risk and the provider gateway are live · Real providers remain disabled pending approval and credentials</span>
           </footer>
         </main>
       </div>
