@@ -7,10 +7,11 @@ import { FraudRiskControl } from "./fraud-risk-control";
 import { ProviderIntegrations } from "./provider-integrations";
 import { CommunicationsControl } from "./communications-control";
 import { CommerceIntegrations } from "./commerce-integrations";
+import { getSupabaseBrowserClient } from "../../lib/supabase/client";
 
-type NavItem = { label: string; icon: typeof LayoutDashboard; badge?: string };
+type NavItem = { label: string; icon: typeof LayoutDashboard; badge?: string; view?: AdminView };
 type NavGroup = { label?: string; items: NavItem[] };
-type AdminView = "Dashboard" | "Users" | "Wallet & Transactions" | "Withdrawals" | "KYC Verification" | "Fraud & Risk" | "Ad Networks" | "Surveys" | "App Install Offers" | "Games" | "Shop & Earn" | "Stores & Links" | "Referrals" | "Content" | "Support Centre" | "Reports" | "Settings & Security" | "Activity Logs";
+type AdminView = "Dashboard" | "Users" | "Wallet & Transactions" | "Withdrawals" | "KYC Verification" | "Fraud & Risk" | "Ad Networks" | "Surveys" | "App Install Offers" | "Games" | "Shop & Earn" | "Stores & Links" | "Referrals" | "Content" | "Support Centre" | "Reports" | "Settings & Security" | "Activity Logs" | "Agents Command Center";
 type SearchRecordType = "User" | "Transaction" | "Withdrawal" | "Support" | "Campaign" | "Store" | "Audit Event";
 type SearchRecord = {
   id: string;
@@ -55,6 +56,7 @@ const adminViewSlugs: Record<AdminView, string> = {
   Reports: "reports",
   "Settings & Security": "settings-security",
   "Activity Logs": "activity-logs",
+  "Agents Command Center": "agents",
 };
 
 const adminSlugViews = Object.fromEntries(Object.entries(adminViewSlugs).map(([view, slug]) => [slug, view])) as Record<string, AdminView>;
@@ -140,6 +142,12 @@ const navGroups: NavGroup[] = [
     items: [
       { label: "Settings & Security", icon: Settings },
       { label: "Activity Logs", icon: Activity },
+    ],
+  },
+  {
+    label: "AGENTS",
+    items: [
+      { label: "Command Center", view: "Agents Command Center", icon: Bot, badge: "17.1" },
     ],
   },
 ];
@@ -2760,6 +2768,310 @@ function ActivityLogsManagement({ action }: { action: (message: string) => void 
   </>;
 }
 
+type AgentDirectoryItem = {
+  number: string;
+  name: string;
+  scope: string;
+  icon: typeof Bot;
+  subagents: string[];
+  operations: string[];
+};
+
+const agentDirectory: AgentDirectoryItem[] = [
+  { number: "01", name: "Chief Operations Agent", scope: "Executive coordination", icon: Bot, subagents: [], operations: ["Department Agents", "Company Tasks", "CEO Approvals", "Automations", "Executive Reports", "Activity History"] },
+  { number: "02", name: "Support Team Lead Agent", scope: "User support operations", icon: Headphones, subagents: ["Support Intake & Classification", "Missing Rewards Support", "Withdrawals Support", "KYC & Account Support", "Escalation & Follow-up", "Support Quality"], operations: ["Support Tickets", "Email Connections"] },
+  { number: "03", name: "Fraud & Risk Agent", scope: "Risk review and escalation", icon: ShieldAlert, subagents: ["Account & Device Investigation", "Transaction & Withdrawal Investigation"], operations: ["Risk Cases", "Review Queue", "Appeals", "Risk Rules"] },
+  { number: "04", name: "Payments & Wallet Agent", scope: "Wallet and payout operations", icon: WalletCards, subagents: ["Wallet & Ledger", "Withdrawal & Reconciliation"], operations: ["Wallet Operations", "Withdrawals", "Reconciliation", "Payment Connections"] },
+  { number: "05", name: "Compliance, KYC & Finance Agent", scope: "Protected compliance workflows", icon: UserCheck, subagents: ["KYC Review", "Finance & Records"], operations: ["KYC Cases", "Compliance Reviews", "Financial Records", "Service Connections"] },
+  { number: "06", name: "Ads Operations Agent", scope: "Watch & Earn operations", icon: MonitorPlay, subagents: [], operations: ["Ad Providers", "Campaigns", "Reward Tracking", "Revenue Reconciliation", "API Connections"] },
+  { number: "07", name: "Offerwall & Tasks Agent", scope: "Surveys and app-install tasks", icon: PackageCheck, subagents: [], operations: ["Offer Providers", "Surveys", "App-Install Offers", "Task Tracking", "Conversion Reconciliation", "API Connections"] },
+  { number: "08", name: "Affiliate & Shop Agent", scope: "Shop, tracking and commissions", icon: ShoppingBag, subagents: ["Provider Connection", "Product Feed", "Catalog Quality", "Deal Ranking", "Tracking Link", "Commission Reconciliation"], operations: ["Providers", "Product Feeds", "Product Catalog", "Stores & Deals", "Click Tracking", "Commissions", "API Connections"] },
+  { number: "09", name: "Content Manager Agent", scope: "Content planning and approvals", icon: FileText, subagents: [], operations: ["Content Calendar", "Content Briefs", "Campaign Copy", "Approval Queue", "Content Sources"] },
+  { number: "10", name: "Creative Production Agent", scope: "Design and video production", icon: Sparkles, subagents: ["Graphic Design", "Video & Motion"], operations: ["Creative Requests", "Design Library", "Video Library", "Brand Review", "Approval Queue", "Creative Connections"] },
+  { number: "11", name: "Social Media Agent", scope: "Publishing and engagement", icon: Send, subagents: [], operations: ["Publishing Calendar", "Scheduled Posts", "Social Conversations", "Content Performance", "Social Connections"] },
+  { number: "12", name: "Performance Marketing Agent", scope: "Campaign and budget performance", icon: TrendingUp, subagents: [], operations: ["Advertising Campaigns", "Audiences", "Budgets", "A/B Tests", "Campaign Approvals", "Advertising Connections"] },
+  { number: "13", name: "Data & Business Analyst Agent", scope: "Business intelligence and forecasts", icon: Activity, subagents: [], operations: ["Business Dashboard", "Revenue Analytics", "User Analytics", "Marketing Analytics", "Risk Analytics", "Forecasts", "Data Connections"] },
+  { number: "14", name: "Technical Operations Agent", scope: "Application and infrastructure health", icon: Settings, subagents: ["Application & Integration Engineer", "Database, Infrastructure & DevOps"], operations: ["System Health", "Incidents", "Deployments", "Failed Jobs", "Security Alerts", "Backups", "Technical Connections"] },
+];
+
+type AgentWorkspaceTab = "Overview" | "Chat & Instruct" | "Subagents" | "Saved Instructions" | "Tasks" | "Reports" | "Approvals" | "Activity History" | "Connections" | "Settings";
+const agentWorkspaceTabs: AgentWorkspaceTab[] = ["Overview", "Chat & Instruct", "Subagents", "Saved Instructions", "Tasks", "Reports", "Approvals", "Activity History", "Connections", "Settings"];
+type AgentInstructionRecord = { id: string; title: string; instruction_text: string; scope: string; priority: number; status: string; version: number; target_type: "main_agent" | "subagent"; target_name: string; updated_at: string };
+type InstructionDiscussionMessage = { actor: "admin" | "system"; body: string };
+type AgentInstructionSnapshot = { title?: string; instruction_text?: string; scope?: string; priority?: number; target_type?: "main_agent" | "subagent"; target_name?: string; status?: string };
+type AgentInstructionVersion = { id: number; version: number; snapshot: AgentInstructionSnapshot; change_type: string; changed_at: string };
+type AgentInstructionStoredMessage = { id: number; actor_type: "admin" | "agent" | "system"; body: string; created_at: string };
+
+const chiefDepartmentPreview = agentDirectory.slice(1).map((department, index) => ({
+  ...department,
+  state: index === 12 ? "Needs setup" : index % 4 === 1 ? "Review" : "Ready",
+  report: index % 3 === 0 ? "Waiting for connection" : "No live data yet",
+}));
+
+function ChiefOperationsOverview({ instructionsCount, onOpen, action }: { instructionsCount: number; onOpen: (tab: AgentWorkspaceTab) => void; action: (message: string) => void }) {
+  const previewTasks = [
+    ["Review department readiness", "13 departments", "High"],
+    ["Prepare daily operations summary", "Runs after data connections", "Normal"],
+    ["Collect unresolved escalations", "Support, risk and payments", "High"],
+  ];
+  const previewApprovals = [
+    ["Campaign budget increase", "Performance Marketing Agent", "CEO approval"],
+    ["New affiliate provider", "Affiliate & Shop Agent", "CEO approval"],
+    ["High-value refund exception", "Support Team Lead Agent", "CEO approval"],
+  ];
+  return <div className="space-y-5">
+    <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{[["Status","Foundation ready"],["Departments","13"],["Saved instructions",String(instructionsCount)],["Live automations","0"]].map(([label,value]) => <article key={label} className="rounded-2xl border bg-white p-5 shadow-sm"><p className="text-xs text-slate-500">{label}</p><p className="mt-2 text-xl font-bold">{value}</p></article>)}</section>
+    <section className="grid gap-5 xl:grid-cols-[1.35fr_.65fr]">
+      <article className="overflow-hidden rounded-2xl border bg-white shadow-sm"><div className="flex items-center border-b p-5"><div><h2 className="font-bold">Department Agents</h2><p className="mt-1 text-xs text-slate-500">Readiness preview for the 13 agents reporting to Chief Operations.</p></div><span className="ml-auto rounded-full bg-amber-50 px-3 py-1 text-[9px] font-bold text-amber-700">NO LIVE RUNS</span></div><div className="grid gap-3 p-4 sm:grid-cols-2">{chiefDepartmentPreview.map((department) => <div key={department.number} className="rounded-xl border p-4"><div className="flex items-start gap-3"><span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-violet-50 text-[10px] font-bold text-violet-700">{department.number}</span><div className="min-w-0"><b className="block truncate text-xs">{department.name}</b><p className="mt-1 text-[10px] text-slate-400">{department.report}</p></div><span className={`ml-auto shrink-0 rounded-full px-2 py-1 text-[9px] font-bold ${department.state === "Ready" ? "bg-emerald-50 text-emerald-700" : department.state === "Review" ? "bg-amber-50 text-amber-700" : "bg-slate-100 text-slate-500"}`}>{department.state}</span></div></div>)}</div></article>
+      <div className="space-y-5"><article className="rounded-2xl border bg-white p-5 shadow-sm"><div className="flex items-center"><h2 className="font-bold">CEO Approvals</h2><span className="ml-auto rounded-full bg-rose-50 px-2 py-1 text-[9px] font-bold text-rose-700">PREVIEW</span></div><div className="mt-4 space-y-3">{previewApprovals.map(([title,source,state]) => <button key={title} onClick={() => action(`${title} is a Step 17.2 preview; no approval was performed`)} className="w-full rounded-xl border p-3 text-left"><b className="block text-xs">{title}</b><p className="mt-1 text-[10px] text-slate-400">{source}</p><span className="mt-2 inline-flex rounded-full bg-amber-50 px-2 py-1 text-[9px] font-bold text-amber-700">{state}</span></button>)}</div></article><article className="rounded-2xl border border-violet-200 bg-violet-50 p-5"><ShieldCheck className="text-violet-600" size={19}/><h2 className="mt-3 font-bold text-violet-950">CEO boundary</h2><p className="mt-2 text-xs leading-5 text-violet-900">The Chief Operations Agent may collect evidence and recommend an action. It cannot approve budgets, payouts, partnerships or policy exceptions for the CEO.</p></article></div>
+    </section>
+    <section className="grid gap-5 lg:grid-cols-2"><article className="rounded-2xl border bg-white p-5 shadow-sm"><div className="flex items-center"><div><h2 className="font-bold">Company Tasks</h2><p className="mt-1 text-xs text-slate-500">Prepared coordination work; nothing runs yet.</p></div><button onClick={() => onOpen("Tasks")} className="ml-auto text-xs font-bold text-violet-700">View tasks →</button></div><div className="mt-4 space-y-3">{previewTasks.map(([title,detail,priority]) => <div key={title} className="flex items-center gap-3 rounded-xl border p-4"><CheckCircle2 size={16} className="text-slate-300"/><div><b className="block text-xs">{title}</b><p className="text-[10px] text-slate-400">{detail}</p></div><span className={`ml-auto rounded-full px-2 py-1 text-[9px] font-bold ${priority === "High" ? "bg-rose-50 text-rose-700" : "bg-slate-100 text-slate-500"}`}>{priority}</span></div>)}</div></article><article className="rounded-2xl border bg-white p-5 shadow-sm"><h2 className="font-bold">Automation & Reporting Schedule</h2><p className="mt-1 text-xs text-slate-500">Proposed timings require CEO approval before activation.</p><div className="mt-4 space-y-3">{[["Morning operations scan","08:00 IST","Daily"],["Escalation collection","Every 30 minutes","After activation"],["CEO executive brief","18:00 IST","Daily"],["Weekly business report","Monday 09:00 IST","Weekly"]].map(([title,time,frequency]) => <div key={title} className="flex items-center gap-3 rounded-xl bg-slate-50 p-4"><Clock3 size={16} className="text-violet-600"/><div><b className="block text-xs">{title}</b><p className="text-[10px] text-slate-400">{time}</p></div><span className="ml-auto text-[9px] font-bold text-slate-500">{frequency}</span></div>)}</div><button onClick={() => action("Automation settings remain locked until Chief Operations activation")} className="mt-4 h-9 w-full rounded-xl border text-xs font-bold text-violet-700">Review proposed schedule</button></article></section>
+  </div>;
+}
+
+function AgentPermissionsHierarchy({ agent }: { agent: AgentDirectoryItem }) {
+  const levels = [
+    ["01", "CEO / Owner", "Creates company policy and final approvals", "Cannot be overridden"],
+    ["02", "Chief Operations Agent", "Coordinates departments inside CEO policy", "Reports to CEO"],
+    ["03", agent.name, "Controls its approved department scope", "Reports to Chief Operations"],
+    ["04", "Specialist Subagents", "Execute narrow assigned work", `Reports to ${agent.name}`],
+  ];
+  const permissions = [
+    ["View instructions", "Authorized active admins", "Allowed with verified AAL2 session"],
+    ["Create or modify instructions", "Owner only", "Protected by database row-level security"],
+    ["Activate, pause or archive", "Owner only", "Every change creates an immutable version"],
+    ["Override a mandatory parent rule", "Nobody below parent", "Rejected by the database"],
+  ];
+  return <div className="grid gap-5 xl:grid-cols-[1.05fr_.95fr]"><section className="rounded-2xl border bg-white p-5 shadow-sm"><div className="flex items-center gap-3"><ShieldCheck size={19} className="text-violet-600"/><div><h2 className="font-bold">Instruction Hierarchy</h2><p className="text-xs text-slate-500">Higher authority always controls conflicting mandatory rules.</p></div></div><div className="mt-5 space-y-3">{levels.map(([number,title,scope,report],index) => <div key={number} className="relative flex gap-3 rounded-xl border p-4">{index < levels.length - 1 && <span className="absolute left-[31px] top-[52px] h-5 w-px bg-violet-200"/>}<span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-violet-50 text-[10px] font-bold text-violet-700">{number}</span><div><b className="text-xs">{title}</b><p className="mt-1 text-[10px] leading-4 text-slate-500">{scope}</p><p className="mt-1 text-[9px] font-bold text-violet-600">{report}</p></div></div>)}</div></section><section className="space-y-5"><article className="rounded-2xl border bg-white p-5 shadow-sm"><h2 className="font-bold">Permission Rules</h2><div className="mt-4 space-y-3">{permissions.map(([actionName,who,control]) => <div key={actionName} className="rounded-xl bg-slate-50 p-4"><div className="flex items-center"><b className="text-xs">{actionName}</b><span className="ml-auto rounded-full bg-white px-2 py-1 text-[9px] font-bold text-violet-700">{who}</span></div><p className="mt-2 text-[10px] text-slate-500">{control}</p></div>)}</div></article><article className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5"><LockKeyhole size={18} className="text-emerald-700"/><h2 className="mt-3 font-bold text-emerald-950">Server enforced</h2><p className="mt-2 text-xs leading-5 text-emerald-900">The database validates parent authority, scope ancestry and mandatory-rule conflicts. Hiding a button in the interface is not treated as security.</p></article></section></div>;
+}
+
+function AgentApprovalsShell({ agent, action }: { agent: AgentDirectoryItem; action: (message: string) => void }) {
+  const approvalTypes = agent.number === "01"
+    ? ["Department escalation", "Budget or payout request", "Policy exception"]
+    : ["Agent-recommended action", "Protected operation", "Escalation to Chief Operations"];
+  return <section className="overflow-hidden rounded-2xl border bg-white shadow-sm"><div className="flex flex-col gap-3 border-b p-5 sm:flex-row sm:items-center"><div><h2 className="font-bold">Approvals</h2><p className="mt-1 text-xs text-slate-500">Human decisions requested by {agent.name} will appear here.</p></div><div className="flex gap-2 sm:ml-auto"><select aria-label="Filter agent approvals" defaultValue="all" className="h-9 rounded-xl border bg-white px-3 text-xs font-bold text-slate-600"><option value="all">All approvals</option><option value="waiting">Waiting</option><option value="approved">Approved</option><option value="rejected">Rejected</option></select><button onClick={() => action(`No live approval requests exist for ${agent.name}`)} className="h-9 rounded-xl border px-3 text-xs font-bold text-violet-700">Refresh</button></div></div><div className="grid gap-4 p-5 md:grid-cols-3">{approvalTypes.map((type,index) => <article key={type} className="rounded-xl border border-dashed p-4"><span className="grid h-9 w-9 place-items-center rounded-xl bg-violet-50 text-violet-600"><ShieldCheck size={16}/></span><h3 className="mt-3 text-xs font-bold">{type}</h3><p className="mt-2 text-[10px] leading-4 text-slate-500">{index === 0 ? "The agent submits evidence, recommendation and risk level." : "A verified human decision is required before execution."}</p><span className="mt-3 inline-flex rounded-full bg-slate-100 px-2 py-1 text-[9px] font-bold text-slate-500">EMPTY SHELL</span></article>)}</div><div className="border-t bg-amber-50 px-5 py-3 text-[10px] leading-5 text-amber-900"><b>Human approval boundary:</b> displaying a request never authorizes the agent to execute it. Production actions will re-check role, two-factor session, instruction hierarchy and approval state.</div></section>;
+}
+
+function AgentActivityHistoryShell({ agent, instructions }: { agent: AgentDirectoryItem; instructions: AgentInstructionRecord[] }) {
+  const recentInstructionEvents = instructions.slice(0, 5).map((instruction) => ({
+    id: instruction.id,
+    title: `${instruction.status === "archived" ? "Archived" : instruction.status === "paused" ? "Paused" : instruction.status === "active" ? "Activated" : "Saved"} instruction: ${instruction.title}`,
+    detail: `${instruction.target_type === "subagent" ? "Subagent" : "Main agent"} · ${instruction.target_name} · version ${instruction.version}`,
+    time: new Date(instruction.updated_at).toLocaleString("en-IN"),
+  }));
+  return <section className="overflow-hidden rounded-2xl border bg-white shadow-sm"><div className="flex flex-col gap-3 border-b p-5 sm:flex-row sm:items-center"><div><h2 className="font-bold">Activity History</h2><p className="mt-1 text-xs text-slate-500">Read-only timeline of instructions, tasks, approvals, reports and agent actions.</p></div><div className="flex gap-2 sm:ml-auto"><select aria-label="Filter agent activity" defaultValue="all" className="h-9 rounded-xl border bg-white px-3 text-xs font-bold text-slate-600"><option value="all">All activity</option><option value="instructions">Instructions</option><option value="tasks">Tasks</option><option value="approvals">Approvals</option><option value="reports">Reports</option></select><button className="h-9 rounded-xl border px-3 text-xs font-bold text-violet-700">Export history</button></div></div>{recentInstructionEvents.length ? <div className="divide-y">{recentInstructionEvents.map((event) => <article key={event.id} className="flex gap-3 p-5"><span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-emerald-50 text-emerald-600"><CheckCircle2 size={16}/></span><div className="min-w-0"><h3 className="text-xs font-bold">{event.title}</h3><p className="mt-1 text-[10px] text-slate-500">{event.detail}</p><p className="mt-1 text-[9px] text-slate-400">{event.time}</p></div><span className="ml-auto h-fit rounded-full bg-emerald-50 px-2 py-1 text-[9px] font-bold text-emerald-700">Recorded</span></article>)}</div> : <div className="p-10 text-center"><Activity className="mx-auto text-slate-300"/><h3 className="mt-3 text-sm font-bold">No activity recorded</h3><p className="mx-auto mt-1 max-w-md text-xs leading-5 text-slate-500">Events for {agent.name} will appear after an instruction, task, approval or report is created.</p></div>}<div className="border-t bg-slate-50 px-5 py-3 text-[10px] text-slate-500"><b>Read-only evidence:</b> activity is displayed from protected audit and version records and cannot be edited from this page.</div></section>;
+}
+
+function AgentWorkspace({ agent, onBack, action }: { agent: AgentDirectoryItem; onBack: () => void; action: (message: string) => void }) {
+  const [tab, setTab] = useState<AgentWorkspaceTab>("Overview");
+  const [instructions, setInstructions] = useState<AgentInstructionRecord[]>([]);
+  const [instructionsLoading, setInstructionsLoading] = useState(true);
+  const [instructionError, setInstructionError] = useState("");
+  const [composer, setComposer] = useState("");
+  const [discussion, setDiscussion] = useState<InstructionDiscussionMessage[]>([]);
+  const [instructionTitle, setInstructionTitle] = useState("");
+  const [instructionScope, setInstructionScope] = useState("All approved operations");
+  const [instructionTarget, setInstructionTarget] = useState(agent.name);
+  const [instructionPriority, setInstructionPriority] = useState(2);
+  const [instructionFilter, setInstructionFilter] = useState("all");
+  const [editingInstructionId, setEditingInstructionId] = useState<string | null>(null);
+  const [savingInstruction, setSavingInstruction] = useState(false);
+  const [historyInstruction, setHistoryInstruction] = useState<AgentInstructionRecord | null>(null);
+  const [instructionVersions, setInstructionVersions] = useState<AgentInstructionVersion[]>([]);
+  const [storedMessages, setStoredMessages] = useState<AgentInstructionStoredMessage[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyError, setHistoryError] = useState("");
+  const Icon = agent.icon;
+  const isChiefOperations = agent.number === "01";
+  const agentKey = agent.name.toLowerCase().replace(/&/g, "and").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+
+  const loadInstructions = useCallback(async () => {
+    setInstructionsLoading(true);
+    setInstructionError("");
+    try {
+      const { data, error } = await getSupabaseBrowserClient().from("agent_instructions").select("id,title,instruction_text,scope,priority,status,version,target_type,target_name,updated_at").eq("agent_key", agentKey).order("updated_at", { ascending: false });
+      if (error) throw error;
+      setInstructions((data ?? []) as AgentInstructionRecord[]);
+    } catch (error) {
+      setInstructionError(error instanceof Error ? error.message : "Instructions could not be loaded");
+    } finally {
+      setInstructionsLoading(false);
+    }
+  }, [agentKey]);
+
+  useEffect(() => { void loadInstructions(); }, [loadInstructions]);
+
+  const discussInstruction = () => {
+    const message = composer.trim();
+    if (!message) return;
+    setDiscussion((current) => [...current, { actor: "admin", body: message }, { actor: "system", body: "Draft updated. Review the exact wording, scope and status before saving." }]);
+    if (!instructionTitle) setInstructionTitle(message.split(/[.!?]/)[0].slice(0, 80) || `Instruction for ${agent.name}`);
+    setComposer("");
+  };
+
+  const saveInstruction = async (status: "draft" | "active") => {
+    const adminMessages = discussion.filter((message) => message.actor === "admin").map((message) => message.body);
+    const instructionText = adminMessages.join("\n\n").trim();
+    if (instructionTitle.trim().length < 3 || instructionText.length < 10) {
+      action("Add an instruction and a clear title before saving");
+      return;
+    }
+    setSavingInstruction(true);
+    setInstructionError("");
+    try {
+      const supabase = getSupabaseBrowserClient();
+      if (editingInstructionId) {
+        const { error } = await supabase.rpc("update_agent_instruction", { p_instruction_id: editingInstructionId, p_target_type: instructionTarget === agent.name ? "main_agent" : "subagent", p_target_name: instructionTarget, p_title: instructionTitle.trim(), p_instruction_text: instructionText, p_scope: instructionScope.trim(), p_priority: instructionPriority, p_status: status, p_admin_messages: adminMessages });
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.rpc("create_agent_instruction", { p_agent_key: agentKey, p_agent_name: agent.name, p_target_type: instructionTarget === agent.name ? "main_agent" : "subagent", p_target_name: instructionTarget, p_title: instructionTitle.trim(), p_instruction_text: instructionText, p_scope: instructionScope.trim(), p_priority: instructionPriority, p_status: status, p_admin_messages: adminMessages });
+        if (error) throw error;
+      }
+      action(status === "active" ? "Instruction approved and activated" : "Instruction saved as draft");
+      setDiscussion([]); setInstructionTitle(""); setInstructionScope("All approved operations"); setInstructionTarget(agent.name); setInstructionPriority(2); setEditingInstructionId(null);
+      await loadInstructions();
+      setTab("Saved Instructions");
+    } catch (error) {
+      setInstructionError(error instanceof Error ? error.message : "Instruction could not be saved");
+    } finally {
+      setSavingInstruction(false);
+    }
+  };
+
+  const changeInstructionStatus = async (instruction: AgentInstructionRecord, status: "active" | "paused" | "archived") => {
+    setInstructionError("");
+    try {
+      const { error } = await getSupabaseBrowserClient().from("agent_instructions").update({ status, effective_at: status === "active" ? new Date().toISOString() : undefined }).eq("id", instruction.id);
+      if (error) throw error;
+      action(status === "archived" ? "Instruction archived with history preserved" : `Instruction ${status}`);
+      await loadInstructions();
+    } catch (error) {
+      setInstructionError(error instanceof Error ? error.message : "Instruction status could not be changed");
+    }
+  };
+
+  const modifyInstruction = (instruction: AgentInstructionRecord) => {
+    setEditingInstructionId(instruction.id);
+    setInstructionTitle(instruction.title);
+    setInstructionScope(instruction.scope);
+    setInstructionTarget(instruction.target_name);
+    setInstructionPriority(instruction.priority);
+    setDiscussion([{ actor: "admin", body: instruction.instruction_text }, { actor: "system", body: `Editing saved version ${instruction.version}. Saving creates a new immutable version.` }]);
+    setTab("Chat & Instruct");
+  };
+
+  const openInstructionHistory = async (instruction: AgentInstructionRecord) => {
+    setHistoryInstruction(instruction);
+    setHistoryLoading(true);
+    setHistoryError("");
+    try {
+      const supabase = getSupabaseBrowserClient();
+      const [versionsResult, messagesResult] = await Promise.all([
+        supabase.from("agent_instruction_versions").select("id,version,snapshot,change_type,changed_at").eq("instruction_id", instruction.id).order("version", { ascending: false }),
+        supabase.from("agent_instruction_messages").select("id,actor_type,body,created_at").eq("instruction_id", instruction.id).order("created_at", { ascending: true }),
+      ]);
+      if (versionsResult.error) throw versionsResult.error;
+      if (messagesResult.error) throw messagesResult.error;
+      setInstructionVersions((versionsResult.data ?? []) as AgentInstructionVersion[]);
+      setStoredMessages((messagesResult.data ?? []) as AgentInstructionStoredMessage[]);
+    } catch (error) {
+      setHistoryError(error instanceof Error ? error.message : "Instruction history could not be loaded");
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
+
+  const restoreVersionAsDraft = (version: AgentInstructionVersion) => {
+    if (!historyInstruction) return;
+    const snapshot = version.snapshot;
+    setEditingInstructionId(historyInstruction.id);
+    setInstructionTitle(snapshot.title ?? historyInstruction.title);
+    setInstructionScope(snapshot.scope ?? historyInstruction.scope);
+    setInstructionTarget(snapshot.target_name ?? historyInstruction.target_name);
+    setInstructionPriority(snapshot.priority ?? historyInstruction.priority);
+    setDiscussion([{ actor: "admin", body: snapshot.instruction_text ?? historyInstruction.instruction_text }, { actor: "system", body: `Version ${version.version} loaded for review. Saving creates a new draft version; the existing history stays unchanged.` }]);
+    setHistoryInstruction(null);
+    setTab("Chat & Instruct");
+  };
+
+  const filteredInstructions = instructions.filter((instruction) => instructionFilter === "all" || instruction.status === instructionFilter);
+  return <>
+    <button onClick={onBack} className="mb-4 flex h-9 items-center gap-2 rounded-xl px-2 text-xs font-bold text-violet-700 hover:bg-violet-50"><ChevronLeft size={15}/>Back to Agent Directory</button>
+    <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center">
+      <span className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-violet-100 text-violet-700"><Icon size={25}/></span>
+      <div><div className="flex flex-wrap items-center gap-2"><span className="text-xs font-bold text-violet-600">{agent.number}</span><h1 className="text-2xl font-bold tracking-tight md:text-[28px]">{agent.name}</h1><span className={`rounded-full px-2.5 py-1 text-[9px] font-bold ${isChiefOperations ? "bg-violet-50 text-violet-700" : "bg-slate-100 text-slate-500"}`}>{isChiefOperations ? "17.2 FOUNDATION" : "PLANNED"}</span></div><p className="mt-1 text-sm text-slate-500">{agent.scope} · Step 17 foundation workspace</p></div>
+      <div className="lg:ml-auto flex flex-wrap gap-2"><button onClick={() => setTab("Chat & Instruct")} className="flex h-10 items-center gap-2 rounded-xl border bg-white px-4 text-xs font-bold text-violet-700"><Bot size={15}/>Chat & Instruct</button><button onClick={() => action(`${agent.name} cannot run until its later Step 17 activation`)} className="flex h-10 items-center gap-2 rounded-xl bg-violet-600 px-4 text-xs font-bold text-white"><MonitorPlay size={15}/>Run Agent</button></div>
+    </div>
+
+    <div className="admin-scroll mb-5 flex gap-1 overflow-x-auto rounded-xl border bg-white p-1" role="tablist" aria-label={`${agent.name} workspace`}>
+      {agentWorkspaceTabs.map((item) => <button key={item} role="tab" aria-selected={tab === item} onClick={() => setTab(item)} className={`shrink-0 rounded-lg px-4 py-2.5 text-xs font-bold ${tab === item ? "bg-violet-600 text-white shadow-sm" : "text-slate-500 hover:bg-slate-50"}`}>{item}</button>)}
+    </div>
+
+    {tab === "Overview" && isChiefOperations ? <ChiefOperationsOverview instructionsCount={instructions.length} onOpen={setTab} action={action}/> : tab === "Overview" ? <div className="space-y-5">
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{[["Status","Not activated"],["Subagents",String(agent.subagents.length)],["Active tasks","0"],["Saved instructions",String(instructions.length)]].map(([label,value]) => <article key={label} className="rounded-2xl border bg-white p-5 shadow-sm"><p className="text-xs text-slate-500">{label}</p><p className="mt-2 text-xl font-bold">{value}</p></article>)}</section>
+      <section className="rounded-2xl border bg-white p-5 shadow-sm"><div className="flex items-center gap-3"><LayoutDashboard className="text-violet-600" size={19}/><div><h2 className="font-bold">Department workspace</h2><p className="text-xs text-slate-500">Approved operational sections for this agent.</p></div></div><div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{agent.operations.map((operation, index) => <button key={operation} onClick={() => action(`${operation} will be connected during ${agent.name}'s build step`)} className="flex min-h-16 items-center gap-3 rounded-xl border p-4 text-left hover:border-violet-300 hover:bg-violet-50"><span className="grid h-7 w-7 place-items-center rounded-lg bg-violet-100 text-[10px] font-bold text-violet-700">{String(index + 1).padStart(2,"0")}</span><b className="text-xs">{operation}</b><ChevronRight className="ml-auto text-slate-300" size={15}/></button>)}</div></section>
+    </div> : tab === "Chat & Instruct" ? <section className="grid gap-5 xl:grid-cols-[1.35fr_.85fr]">
+      <article className="rounded-2xl border bg-white shadow-sm"><div className="border-b p-5"><h2 className="font-bold">Instruction Discussion</h2><p className="mt-1 text-xs text-slate-500">Discussion remains local until you explicitly save or approve the instruction.</p></div><div className="admin-scroll min-h-72 max-h-[470px] space-y-3 overflow-y-auto p-5">{discussion.length === 0 ? <div className="mx-auto max-w-md rounded-2xl bg-slate-50 p-5 text-center"><Bot className="mx-auto text-violet-600"/><h3 className="mt-3 text-sm font-bold">Start a protected discussion</h3><p className="mt-2 text-xs leading-5 text-slate-500">Describe what this agent should do, where the rule applies and what still requires approval.</p></div> : discussion.map((message,index) => <div key={`${message.actor}-${index}`} className={`max-w-[88%] rounded-2xl p-4 text-xs leading-5 ${message.actor === "admin" ? "ml-auto bg-violet-600 text-white" : "bg-slate-100 text-slate-700"}`}><b className="mb-1 block text-[10px] uppercase tracking-wider opacity-70">{message.actor === "admin" ? "Admin" : "Review system"}</b>{message.body}</div>)}</div><div className="flex gap-2 border-t p-4"><input value={composer} onChange={(event) => setComposer(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") discussInstruction(); }} placeholder={`Give an instruction to ${agent.name}…`} className="h-11 flex-1 rounded-xl border px-4 text-xs outline-none focus:border-violet-400"/><button aria-label="Discuss instruction" onClick={discussInstruction} className="grid h-11 w-11 place-items-center rounded-xl bg-violet-600 text-white"><Send size={16}/></button></div></article>
+      <div className="space-y-5"><article className="rounded-2xl border bg-white p-5 shadow-sm"><h2 className="font-bold">{editingInstructionId ? "Modify Instruction" : "Instruction Review"}</h2><label className="mt-4 block text-[10px] font-bold uppercase tracking-wider text-slate-400">Send instruction to<select value={instructionTarget} onChange={(event) => setInstructionTarget(event.target.value)} className="mt-2 h-10 w-full rounded-xl border bg-white px-3 text-xs font-semibold normal-case tracking-normal outline-none focus:border-violet-400"><option value={agent.name}>{agent.name} (Main agent)</option>{agent.subagents.map((subagent) => <option key={subagent} value={subagent}>{subagent} (Subagent)</option>)}</select></label><label className="mt-3 block text-[10px] font-bold uppercase tracking-wider text-slate-400">Instruction name<input value={instructionTitle} onChange={(event) => setInstructionTitle(event.target.value)} placeholder="Give this instruction a clear name" className="mt-2 h-10 w-full rounded-xl border px-3 text-xs font-semibold normal-case tracking-normal outline-none focus:border-violet-400"/></label><div className="mt-3 grid gap-3 sm:grid-cols-[1fr_150px]"><label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">Scope<input value={instructionScope} onChange={(event) => setInstructionScope(event.target.value)} className="mt-2 h-10 w-full rounded-xl border px-3 text-xs font-semibold normal-case tracking-normal outline-none focus:border-violet-400"/></label><label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">Priority<select value={instructionPriority} onChange={(event) => setInstructionPriority(Number(event.target.value))} className="mt-2 h-10 w-full rounded-xl border bg-white px-3 text-xs font-semibold normal-case tracking-normal outline-none focus:border-violet-400"><option value={1}>1 · Critical</option><option value={2}>2 · High</option><option value={3}>3 · Normal</option><option value={4}>4 · Low</option></select></label></div><div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2"><button disabled={savingInstruction} onClick={() => void saveInstruction("draft")} className="h-10 rounded-xl border px-3 text-xs font-bold text-violet-700 disabled:opacity-40">Save as Draft</button><button disabled={savingInstruction} onClick={() => void saveInstruction("active")} className="h-10 rounded-xl bg-violet-600 px-3 text-xs font-bold text-white disabled:opacity-40">Approve & Activate</button></div>{editingInstructionId && <button onClick={() => { setEditingInstructionId(null); setDiscussion([]); setInstructionTitle(""); setInstructionTarget(agent.name); setInstructionPriority(2); }} className="mt-2 h-9 w-full text-xs font-bold text-slate-500">Cancel modification</button>}</article><article className="rounded-2xl border bg-white p-5 shadow-sm"><h2 className="font-bold">Instruction safeguards</h2><div className="mt-4 space-y-3">{["Discussion does not save automatically","Owner and AAL2 required to change rules","Higher-level policies cannot be overridden","Every saved change creates a version and audit event"].map((item) => <div key={item} className="flex gap-2 rounded-xl bg-emerald-50 p-3 text-xs text-emerald-900"><ShieldCheck size={15} className="shrink-0 text-emerald-600"/>{item}</div>)}</div></article></div>
+    </section> : tab === "Subagents" ? <section className="rounded-2xl border bg-white p-5 shadow-sm"><h2 className="font-bold">Subagents</h2><p className="mt-1 text-xs text-slate-500">Specialist workers reporting to {agent.name}. You can prepare instructions before activation.</p>{agent.subagents.length ? <div className="mt-5 grid gap-3 md:grid-cols-2">{agent.subagents.map((subagent, index) => <article key={subagent} className="flex items-center gap-3 rounded-xl border p-4"><span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-violet-50 text-[10px] font-bold text-violet-700">{String(index + 1).padStart(2,"0")}</span><span className="min-w-0"><b className="block text-xs">{subagent}</b><span className="text-[10px] text-slate-400">Planned specialist subagent</span></span><button onClick={() => { setEditingInstructionId(null); setDiscussion([]); setInstructionTitle(""); setInstructionTarget(subagent); setInstructionPriority(2); setTab("Chat & Instruct"); }} className="ml-auto h-8 shrink-0 rounded-lg border border-violet-200 px-3 text-[10px] font-bold text-violet-700">Instruct</button></article>)}</div> : <div className="mt-5 rounded-xl border border-dashed p-8 text-center text-xs text-slate-500">No specialist subagents are approved for the initial build.</div>}</section>
+    : tab === "Saved Instructions" ? <section className="overflow-hidden rounded-2xl border bg-white shadow-sm"><div className="flex flex-col gap-3 border-b p-5 sm:flex-row sm:items-center"><div><h2 className="font-bold">Saved Instructions</h2><p className="mt-1 text-xs text-slate-500">Versioned operating rules for {agent.name}.</p></div><div className="flex gap-2 sm:ml-auto"><select aria-label="Filter instructions by status" value={instructionFilter} onChange={(event) => setInstructionFilter(event.target.value)} className="h-9 rounded-xl border bg-white px-3 text-xs font-bold text-slate-600"><option value="all">All statuses</option>{["draft","active","paused","archived"].map((status) => <option key={status} value={status}>{status[0].toUpperCase() + status.slice(1)}</option>)}</select><button onClick={() => { setEditingInstructionId(null); setDiscussion([]); setInstructionTitle(""); setInstructionTarget(agent.name); setTab("Chat & Instruct"); }} className="flex h-9 items-center gap-2 rounded-xl bg-violet-600 px-3 text-xs font-bold text-white"><Plus size={14}/>New instruction</button></div></div>{instructionError && <div role="alert" className="border-b border-rose-200 bg-rose-50 px-5 py-3 text-xs text-rose-700">{instructionError}</div>}{instructionsLoading ? <div className="p-8 text-center text-xs text-slate-500">Loading protected instructions…</div> : instructions.length === 0 ? <div className="p-10 text-center"><FileText className="mx-auto text-slate-300"/><h3 className="mt-3 text-sm font-bold">No instructions saved</h3><p className="mt-1 text-xs text-slate-500">Discuss the first instruction and approve it when ready.</p></div> : filteredInstructions.length === 0 ? <div className="p-10 text-center text-xs text-slate-500">No instructions match this status filter.</div> : <div className="divide-y">{filteredInstructions.map((instruction) => <article key={instruction.id} className="flex flex-col gap-4 p-5 lg:flex-row lg:items-center"><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><h3 className="text-sm font-bold">{instruction.title}</h3><span className={`rounded-full px-2 py-1 text-[9px] font-bold ${instruction.status === "active" ? "bg-emerald-50 text-emerald-700" : instruction.status === "paused" ? "bg-amber-50 text-amber-700" : instruction.status === "archived" ? "bg-slate-100 text-slate-500" : "bg-violet-50 text-violet-700"}`}>{instruction.status.replace("_"," ")}</span><span className="text-[9px] font-bold text-slate-400">v{instruction.version}</span><span className="rounded-full bg-slate-100 px-2 py-1 text-[9px] font-bold text-slate-600">{instruction.target_type === "subagent" ? "Subagent" : "Main agent"}: {instruction.target_name}</span></div><p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-500">{instruction.instruction_text}</p><p className="mt-2 text-[10px] text-slate-400">Scope: {instruction.scope} · Updated {new Date(instruction.updated_at).toLocaleString("en-IN")}</p></div><div className="flex shrink-0 flex-wrap gap-2 lg:ml-auto"><button onClick={() => void openInstructionHistory(instruction)} className="h-9 rounded-lg border px-3 text-[10px] font-bold text-slate-600">History</button><button onClick={() => modifyInstruction(instruction)} className="h-9 rounded-lg border px-3 text-[10px] font-bold text-violet-700">Modify</button>{instruction.status === "active" ? <button onClick={() => void changeInstructionStatus(instruction,"paused")} className="h-9 rounded-lg border px-3 text-[10px] font-bold text-amber-700">Pause</button> : instruction.status !== "archived" && <button onClick={() => void changeInstructionStatus(instruction,"active")} className="h-9 rounded-lg border px-3 text-[10px] font-bold text-emerald-700">Activate</button>}{instruction.status !== "archived" && <button onClick={() => window.confirm("Archive this instruction? Its version history will be preserved.") && void changeInstructionStatus(instruction,"archived")} className="h-9 rounded-lg border border-rose-200 px-3 text-[10px] font-bold text-rose-700">Archive</button>}</div></article>)}</div>}<div className="border-t bg-slate-50 px-5 py-3 text-[10px] text-slate-500"><b>Protected history:</b> instructions are archived instead of permanently deleted.</div></section>
+    : tab === "Tasks" ? <AgentEmptyPanel icon={CheckCircle2} title="Agent Tasks" note="Running, waiting, completed, failed and escalated assignments will appear here." />
+    : tab === "Reports" ? <AgentEmptyPanel icon={SlidersHorizontal} title="Agent Reports" note="Daily, weekly and performance reports will appear here after activation." />
+    : tab === "Approvals" ? <AgentApprovalsShell agent={agent} action={action}/>
+    : tab === "Activity History" ? <AgentActivityHistoryShell agent={agent} instructions={instructions}/>
+    : tab === "Connections" ? <AgentEmptyPanel icon={Link2} title="Connections" note="Only approved email, provider, API and service connections will be available here." />
+    : <AgentPermissionsHierarchy agent={agent}/>}
+    {historyInstruction && <div className="fixed inset-0 z-[120] flex justify-end bg-slate-950/50" onMouseDown={(event) => event.target === event.currentTarget && setHistoryInstruction(null)}><aside role="dialog" aria-modal="true" aria-labelledby="instruction-history-title" className="admin-scroll h-full w-full max-w-2xl overflow-y-auto bg-[#f7f8fc] shadow-2xl"><div className="sticky top-0 z-10 flex items-center border-b bg-white p-5"><div className="min-w-0"><p className="text-[10px] font-bold uppercase tracking-wider text-violet-600">Protected instruction history</p><h2 id="instruction-history-title" className="truncate text-lg font-bold">{historyInstruction.title}</h2><p className="text-[10px] text-slate-500">{historyInstruction.target_type === "subagent" ? "Subagent" : "Main agent"}: {historyInstruction.target_name}</p></div><button aria-label="Close instruction history" onClick={() => setHistoryInstruction(null)} className="ml-auto grid h-10 w-10 shrink-0 place-items-center rounded-xl border"><X size={18}/></button></div><div className="space-y-5 p-5">{historyLoading ? <div className="rounded-2xl border bg-white p-8 text-center text-xs text-slate-500">Loading protected history…</div> : historyError ? <div role="alert" className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-xs text-rose-700">{historyError}</div> : <><section className="rounded-2xl border bg-white p-5"><h3 className="font-bold">Version History</h3><p className="mt-1 text-xs text-slate-500">Every saved change is retained. Restoring loads an old version into review; it never overwrites history.</p><div className="mt-4 space-y-3">{instructionVersions.length === 0 ? <p className="rounded-xl bg-slate-50 p-4 text-xs text-slate-500">No version snapshots are available.</p> : instructionVersions.map((version) => <article key={version.id} className="rounded-xl border p-4"><div className="flex items-start gap-3"><span className="rounded-lg bg-violet-50 px-2 py-1 text-[10px] font-bold text-violet-700">v{version.version}</span><div><b className="block text-xs">{version.snapshot.title ?? historyInstruction.title}</b><p className="mt-1 text-[10px] text-slate-400">{version.change_type.replace("_", " ")} · {new Date(version.changed_at).toLocaleString("en-IN")}</p></div><button onClick={() => restoreVersionAsDraft(version)} className="ml-auto h-8 shrink-0 rounded-lg border px-3 text-[10px] font-bold text-violet-700">Restore as draft</button></div><p className="mt-3 line-clamp-3 text-xs leading-5 text-slate-500">{version.snapshot.instruction_text ?? "Instruction text unavailable in this snapshot."}</p></article>)}</div></section><section className="rounded-2xl border bg-white p-5"><h3 className="font-bold">Saved Discussion</h3><p className="mt-1 text-xs text-slate-500">Messages stored when this instruction was created.</p><div className="mt-4 space-y-3">{storedMessages.length === 0 ? <p className="rounded-xl bg-slate-50 p-4 text-xs text-slate-500">No saved discussion messages.</p> : storedMessages.map((message) => <div key={message.id} className={`max-w-[90%] rounded-xl p-4 text-xs leading-5 ${message.actor_type === "admin" ? "ml-auto bg-violet-600 text-white" : "bg-slate-100 text-slate-700"}`}><b className="mb-1 block text-[9px] uppercase tracking-wider opacity-70">{message.actor_type}</b>{message.body}<span className="mt-2 block text-[9px] opacity-60">{new Date(message.created_at).toLocaleString("en-IN")}</span></div>)}</div></section></>}</div></aside></div>}
+  </>;
+}
+
+function AgentEmptyPanel({ icon: Icon, title, note }: { icon: typeof Bot; title: string; note: string }) {
+  return <section className="rounded-2xl border bg-white p-8 text-center shadow-sm"><span className="mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-violet-50 text-violet-600"><Icon size={21}/></span><h2 className="mt-4 font-bold">{title}</h2><p className="mx-auto mt-2 max-w-lg text-xs leading-5 text-slate-500">{note}</p><span className="mt-4 inline-flex rounded-full bg-slate-100 px-3 py-1 text-[9px] font-bold text-slate-500">FOUNDATION PLACEHOLDER</span></section>;
+}
+
+function AgentsCommandCenter({ action }: { action: (message: string) => void }) {
+  const [selectedAgent, setSelectedAgent] = useState<AgentDirectoryItem | null>(null);
+  if (selectedAgent) return <AgentWorkspace agent={selectedAgent} onBack={() => setSelectedAgent(null)} action={action}/>;
+  return <>
+    <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+      <div>
+        <div className="mb-2 flex items-center gap-2 text-xs text-slate-400"><Bot size={14} className="text-violet-600"/>Step 17.1 · Agent platform foundation</div>
+        <h1 className="text-2xl font-bold tracking-tight md:text-[28px]">Agents Command Center</h1>
+        <p className="mt-1 max-w-3xl text-sm text-slate-500">The protected home for Glonni&apos;s AI departments, assignments, approvals and operating reports.</p>
+      </div>
+      <button onClick={() => action("Agent creation is enabled in a later Step 17 phase")} className="flex h-10 items-center gap-2 rounded-xl bg-violet-600 px-4 text-xs font-bold text-white shadow-lg shadow-violet-200">
+        <Plus size={15}/>Add agent
+      </button>
+    </div>
+
+    <section className="mb-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4" aria-label="Agent platform summary">
+      {[
+        ["Main agents", "14", "Approved directory", Bot, "bg-violet-50 text-violet-700"],
+        ["Subagents", "22", "Planned specialists", Users, "bg-blue-50 text-blue-700"],
+        ["Active tasks", "0", "Automation not connected", CheckCircle2, "bg-emerald-50 text-emerald-700"],
+        ["Need approval", "0", "Approval queue ready next", ShieldCheck, "bg-amber-50 text-amber-700"],
+      ].map(([label, value, note, Icon, color]) => <article key={label as string} className="surface-card rounded-2xl border bg-white p-5 shadow-sm">
+        <div className="flex items-start gap-4"><span className={`grid h-11 w-11 shrink-0 place-items-center rounded-xl ${color as string}`}><Icon size={20}/></span><div><p className="text-xs font-semibold text-slate-500">{label as string}</p><p className="mt-1 text-2xl font-bold">{value as string}</p><p className="mt-1 text-[10px] text-slate-400">{note as string}</p></div></div>
+      </article>)}
+    </section>
+
+    <section className="mb-5 rounded-2xl border border-violet-200 bg-violet-50 p-5">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center"><span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-white text-violet-700 shadow-sm"><Bot size={21}/></span><div><h2 className="text-sm font-bold text-violet-950">Foundation mode</h2><p className="mt-1 text-xs leading-5 text-violet-800">The directory and navigation shell are available. Agents remain inactive until their permissions, instructions, data boundaries and approval rules are built and verified.</p></div><span className="sm:ml-auto rounded-full border border-violet-200 bg-white px-3 py-1.5 text-[10px] font-bold text-violet-700">STEP 17.1</span></div>
+    </section>
+
+    <section className="overflow-hidden rounded-2xl border bg-white shadow-sm">
+      <div className="flex flex-col gap-3 border-b p-5 sm:flex-row sm:items-center"><div><h2 className="font-bold">Department Agents</h2><p className="mt-1 text-xs text-slate-500">Approved Step 17 directory · agent detail workspaces will be activated in sequence.</p></div><div className="sm:ml-auto flex items-center gap-2 rounded-xl bg-slate-50 px-3 py-2 text-[10px] font-bold text-slate-500"><ShieldCheck size={14} className="text-emerald-600"/>Human approval required</div></div>
+      <div className="grid gap-3 p-4 md:grid-cols-2 xl:grid-cols-3">
+        {agentDirectory.map((agent) => { const Icon = agent.icon; return <button key={agent.number} onClick={() => setSelectedAgent(agent)} className="group flex min-h-[104px] items-center gap-4 rounded-xl border p-4 text-left hover:border-violet-300 hover:bg-violet-50/40">
+          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-violet-50 text-violet-600"><Icon size={20}/></span>
+          <span className="min-w-0"><span className="text-[10px] font-bold text-violet-600">{agent.number}</span><span className="block truncate text-sm font-bold text-slate-800">{agent.name}</span><span className="mt-1 block text-[10px] text-slate-400">{agent.scope}</span></span>
+          <span className="ml-auto rounded-full bg-slate-100 px-2 py-1 text-[9px] font-bold text-slate-500 group-hover:bg-white">Planned</span>
+        </button>})}
+      </div>
+    </section>
+  </>;
+}
+
 export default function AdminDashboardPage() {
   const [activeView, setActiveView] = useState<AdminView>("Dashboard");
   const [currentRole, setCurrentRole] = useState<AdminRole>("Super Admin");
@@ -3198,21 +3510,22 @@ export default function AdminDashboardPage() {
               {group.label && !collapsed && <p className="mb-2 px-3 text-[10px] font-semibold tracking-[.14em] text-slate-500">{group.label}</p>}
               <div className="space-y-1">
                 {group.items.map((item) => {
-                  const enabled = adminViews.includes(item.label as AdminView);
-                  const authorized = enabled && workspace.views.includes(item.label as AdminView);
-                  const active = item.label === activeView;
+                  const itemView = item.view ?? item.label as AdminView;
+                  const enabled = adminViews.includes(itemView);
+                  const authorized = enabled && workspace.views.includes(itemView);
+                  const active = itemView === activeView;
                   const Icon = item.icon;
                   return (
                     <a
                       key={item.label}
-                      href={enabled ? `/admin?section=${adminViewSlugs[item.label as AdminView]}` : undefined}
+                      href={enabled ? `/admin?section=${adminViewSlugs[itemView]}` : undefined}
                       title={collapsed ? item.label : undefined}
                       aria-current={active ? "page" : undefined}
                       aria-disabled={!enabled || !authorized}
                       onClick={(event) => {
                         if (enabled && authorized) {
                           event.preventDefault();
-                          const view = item.label as AdminView;
+                          const view = itemView;
                           if (view !== activeView) navigateTo(view);
                           else setMenuOpen(false);
                         } else {
@@ -3359,6 +3672,8 @@ export default function AdminDashboardPage() {
               <SettingsSecurity action={action} />
             ) : activeView === "Activity Logs" ? (
               <ActivityLogsManagement action={action} />
+            ) : activeView === "Agents Command Center" ? (
+              <AgentsCommandCenter action={action} />
             ) : (
               <>
                 <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
