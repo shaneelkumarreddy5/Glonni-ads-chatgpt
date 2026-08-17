@@ -52,7 +52,7 @@ Deno.serve(async (request: Request) => {
   }
 
   const result = await fetch(
-    `${supabaseUrl}/rest/v1/rpc/ingest_earning_provider_postback`,
+    `${supabaseUrl}/rest/v1/rpc/ingest_earning_provider_gateway_postback`,
     {
       method: "POST",
       headers: {
