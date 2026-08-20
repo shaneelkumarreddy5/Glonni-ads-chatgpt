@@ -10,4 +10,5 @@ yarn-error.log*
 pnpm-debug.log*
 tsconfig.tsbuildinfo
 .vercel
+supabase/.temp/
 .env.local
