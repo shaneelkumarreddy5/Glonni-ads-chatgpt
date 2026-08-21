@@ -1,0 +1,15 @@
+"use client";
+
+import { useState } from "react";
+import { FinanceActivityHistory, FinanceApprovals, FinanceAutomations, FinanceConnections, FinanceExceptions, FinancePayoutOverview, FinancePayouts, FinanceReconciliation, FinanceReports, FinanceRewardsLedger, FinanceSettings, FinanceSubagents, FinanceTasks, FinanceWithdrawals } from "../finance-payout-agent";
+
+const tabs = ["Overview","Subagents","Rewards Ledger","Reconciliation","Withdrawals","Payouts","Exceptions","Tasks","Reports","Approvals","Automations","Activity History","Connections","Settings"] as const;
+type Tab = typeof tabs[number];
+
+export default function FinanceAgentPage() {
+  const [tab,setTab] = useState<Tab>("Overview");
+  const [notice,setNotice] = useState("");
+  const action = (message:string) => setNotice(message);
+  const open = (next:string) => { if ((tabs as readonly string[]).includes(next)) setTab(next as Tab); };
+  return <main className="min-h-screen bg-slate-50 p-4 text-slate-900 md:p-7"><div className="mx-auto max-w-[1500px] space-y-5"><header className="rounded-2xl border bg-white p-5 shadow-sm"><p className="text-[10px] font-bold uppercase tracking-[.16em] text-violet-600">Step 17.5 · Agents</p><div className="mt-2 flex flex-col gap-3 md:flex-row md:items-end"><div><h1 className="text-2xl font-black">Finance & Payout Agent</h1><p className="mt-1 max-w-3xl text-xs leading-5 text-slate-500">Provider-neutral finance operations for reward reconciliation, withdrawal monitoring, payout evidence and exception routing. The agent cannot move money.</p></div><a href="/admin?section=agents" className="md:ml-auto text-xs font-bold text-violet-700">← Agents Command Center</a></div></header><nav className="flex gap-2 overflow-x-auto rounded-2xl border bg-white p-2 shadow-sm" aria-label="Finance agent sections">{tabs.map(item=><button key={item} onClick={()=>setTab(item)} className={`shrink-0 rounded-xl px-3 py-2 text-[11px] font-bold ${tab===item?"bg-violet-600 text-white":"text-slate-600 hover:bg-slate-50"}`}>{item}</button>)}</nav>{notice && <div role="status" className="rounded-xl border border-violet-200 bg-violet-50 px-4 py-3 text-xs text-violet-900">{notice}<button onClick={()=>setNotice("")} className="float-right font-bold">Dismiss</button></div>}<section>{tab==="Overview"?<FinancePayoutOverview onOpen={open}/>:tab==="Subagents"?<FinanceSubagents onInstruct={(name)=>action(`${name}: instruction workspace opened in protected mode`)}/>:tab==="Rewards Ledger"?<FinanceRewardsLedger/>:tab==="Reconciliation"?<FinanceReconciliation action={action}/>:tab==="Withdrawals"?<FinanceWithdrawals action={action}/>:tab==="Payouts"?<FinancePayouts action={action}/>:tab==="Exceptions"?<FinanceExceptions action={action}/>:tab==="Tasks"?<FinanceTasks/>:tab==="Reports"?<FinanceReports/>:tab==="Approvals"?<FinanceApprovals action={action}/>:tab==="Automations"?<FinanceAutomations action={action}/>:tab==="Activity History"?<FinanceActivityHistory/>:tab==="Connections"?<FinanceConnections action={action}/>:<FinanceSettings/>}</section></div></main>;
+}
