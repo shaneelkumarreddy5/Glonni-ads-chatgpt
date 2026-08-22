@@ -3,6 +3,8 @@ import { useState } from "react";
 import { Bot, CirclePause, Play, ShieldCheck } from "lucide-react";
 import { runtimeProviders } from "../../lib/agents/runtime/providers";
 import type { ApprovalRisk, RuntimeProvider, RuntimeResult } from "../../lib/agents/runtime/types";
+import { assignedTextModel } from "../../lib/agents/runtime/model-policy";
+import { ModelGovernancePanel } from "./model-governance-panel";
 
 const departments = ["Support Team Lead Agent", "Fraud & Risk Agent", "Payments & Wallet Agent", "Compliance, KYC & Finance Agent", "Ads Operations Agent", "Offerwall & Tasks Agent", "Affiliate & Shop Agent", "Content Manager Agent", "Creative Production Agent", "Social Media Agent", "Performance Marketing Agent", "Data & Business Analyst Agent", "Technical Operations Agent"];
 
@@ -13,9 +15,10 @@ export function AgentRuntimeControl() {
   const [approvalRisk,setApprovalRisk]=useState<ApprovalRisk>("ceo");
   const [result,setResult]=useState<RuntimeResult|null>(null);
   const [error,setError]=useState(""); const [running,setRunning]=useState(false);
-  async function run(){setRunning(true);setError("");setResult(null);try{const response=await fetch("/api/admin/agents/runtime/simulate",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({objective,mainAgent,provider,modelAlias:runtimeProviders[provider].defaultModelAlias,tokenBudget:4000,timeoutMs:30000,maxRetries:1,approvalRisk})});const body=await response.json();if(!response.ok)throw new Error(body.error??"Simulation failed.");setResult(body);}catch(cause){setError(cause instanceof Error?cause.message:"Simulation failed.");}finally{setRunning(false);}}
+  async function run(){setRunning(true);setError("");setResult(null);try{const response=await fetch("/api/admin/agents/runtime/simulate",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({objective,mainAgent,provider,modelAlias:assignedTextModel(mainAgent),tokenBudget:4000,timeoutMs:30000,maxRetries:1,approvalRisk})});const body=await response.json();if(!response.ok)throw new Error(body.error??"Simulation failed.");setResult(body);}catch(cause){setError(cause instanceof Error?cause.message:"Simulation failed.");}finally{setRunning(false);}}
   return <div className="space-y-5">
-    <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{[["Runtime mode","Simulation only"],["Live AI calls","Disabled"],["Emergency pause","Ready"],["Provider adapters","4 available"]].map(([label,value])=><article key={label} className="rounded-2xl border bg-white p-5"><p className="text-xs text-slate-500">{label}</p><p className="mt-2 text-lg font-bold">{value}</p></article>)}</section>
+    <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{[["Runtime mode","Simulation only"],["Live AI calls","Disabled"],["Emergency pause","Ready"],["Model allowlist","3 approved"]].map(([label,value])=><article key={label} className="rounded-2xl border bg-white p-5"><p className="text-xs text-slate-500">{label}</p><p className="mt-2 text-lg font-bold">{value}</p></article>)}</section>
+    <ModelGovernancePanel/>
     <section className="grid gap-5 xl:grid-cols-[.8fr_1.2fr]"><article className="rounded-2xl border bg-white p-5"><div className="flex items-center gap-3"><Bot className="text-violet-600"/><div><h2 className="font-bold">Simulate an agent run</h2><p className="text-xs text-slate-500">Preview routing, approvals, tokens and cost without contacting an AI provider.</p></div></div>
       <label className="mt-5 block text-[10px] font-bold uppercase tracking-wider text-slate-400">Objective<textarea value={objective} onChange={e=>setObjective(e.target.value)} className="mt-2 min-h-24 w-full rounded-xl border p-3 text-xs normal-case tracking-normal"/></label>
       <label className="mt-3 block text-[10px] font-bold uppercase tracking-wider text-slate-400">Department agent<select value={mainAgent} onChange={e=>setMainAgent(e.target.value)} className="mt-2 h-10 w-full rounded-xl border bg-white px-3 text-xs normal-case tracking-normal">{departments.map(item=><option key={item}>{item}</option>)}</select></label>
