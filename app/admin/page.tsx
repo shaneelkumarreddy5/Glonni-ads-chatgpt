@@ -18,6 +18,7 @@ import { BrandReview, CreativeActivity, CreativeApprovals, CreativeAutomations, 
 import { ContentPerformance, PublishingCalendar, ScheduledPosts, SocialActivity, SocialApprovals, SocialAutomations, SocialConnections, SocialConversations, SocialMediaOverview, SocialReports, SocialSettings, SocialTasks } from "./social-media-agent";
 import { AdvertisingCampaigns, CampaignApprovals, MarketingActivity, MarketingApprovals, MarketingAudiences, MarketingAutomations, MarketingBudgets, MarketingConnections, MarketingReports, MarketingSettings, MarketingTasks, MarketingTests, PerformanceMarketingOverview } from "./performance-marketing-agent";
 import { AnalystActivity, AnalystApprovals, AnalystAutomations, AnalystConnections, AnalystReports, AnalystTasks, BusinessDashboard, DataAnalystOverview, Forecasts, MarketingAnalytics, RevenueAnalytics, RiskAnalytics, UserAnalytics } from "./data-business-analyst-agent";
+import { Backups, Deployments, FailedJobs, Incidents, SecurityAlerts, SystemHealth, TechnicalActivity, TechnicalApprovals, TechnicalAutomations, TechnicalConnections, TechnicalReports, TechnicalSettings, TechnicalTasks } from "./technical-operations-agent";
 import { getSupabaseBrowserClient } from "../../lib/supabase/client";
 
 type NavItem = { label: string; icon: typeof LayoutDashboard; badge?: string; view?: AdminView };
@@ -2805,7 +2806,7 @@ const agentDirectory: AgentDirectoryItem[] = [
   { number: "14", name: "Technical Operations Agent", scope: "Application and infrastructure health", icon: Settings, subagents: ["Application & Integration Engineer", "Database, Infrastructure & DevOps"], operations: ["System Health", "Incidents", "Deployments", "Failed Jobs", "Security Alerts", "Backups", "Technical Connections"] },
 ];
 
-type AgentWorkspaceTab = "Overview" | "Chat & Instruct" | "Subagents" | "Support Tickets" | "Risk Cases" | "Review Queue" | "Appeals" | "Risk Rules" | "KYC Cases" | "Compliance Reviews" | "Financial Records" | "Ad Providers" | "Campaigns" | "Reward Tracking" | "Revenue Reconciliation" | "Offer Providers" | "Surveys" | "App-Install Offers" | "Task Tracking" | "Conversion Reconciliation" | "Providers" | "Product Feeds" | "Product Catalog" | "Stores & Deals" | "Click Tracking" | "Commissions" | "Content Calendar" | "Content Briefs" | "Campaign Copy" | "Approval Queue" | "Content Sources" | "Creative Requests" | "Design Library" | "Video Library" | "Brand Review" | "Publishing Calendar" | "Scheduled Posts" | "Social Conversations" | "Content Performance" | "Advertising Campaigns" | "Audiences" | "Budgets" | "A/B Tests" | "Campaign Approvals" | "Business Dashboard" | "Revenue Analytics" | "User Analytics" | "Marketing Analytics" | "Risk Analytics" | "Forecasts" | "Saved Instructions" | "Tasks" | "Reports" | "Approvals" | "Automations" | "Activity History" | "Connections" | "Settings";
+type AgentWorkspaceTab = "Overview" | "Chat & Instruct" | "Subagents" | "Support Tickets" | "Risk Cases" | "Review Queue" | "Appeals" | "Risk Rules" | "KYC Cases" | "Compliance Reviews" | "Financial Records" | "Ad Providers" | "Campaigns" | "Reward Tracking" | "Revenue Reconciliation" | "Offer Providers" | "Surveys" | "App-Install Offers" | "Task Tracking" | "Conversion Reconciliation" | "Providers" | "Product Feeds" | "Product Catalog" | "Stores & Deals" | "Click Tracking" | "Commissions" | "Content Calendar" | "Content Briefs" | "Campaign Copy" | "Approval Queue" | "Content Sources" | "Creative Requests" | "Design Library" | "Video Library" | "Brand Review" | "Publishing Calendar" | "Scheduled Posts" | "Social Conversations" | "Content Performance" | "Advertising Campaigns" | "Audiences" | "Budgets" | "A/B Tests" | "Campaign Approvals" | "Business Dashboard" | "Revenue Analytics" | "User Analytics" | "Marketing Analytics" | "Risk Analytics" | "Forecasts" | "System Health" | "Incidents" | "Deployments" | "Failed Jobs" | "Security Alerts" | "Backups" | "Saved Instructions" | "Tasks" | "Reports" | "Approvals" | "Automations" | "Activity History" | "Connections" | "Settings";
 const agentWorkspaceTabs: AgentWorkspaceTab[] = ["Overview", "Chat & Instruct", "Subagents", "Saved Instructions", "Tasks", "Reports", "Approvals", "Activity History", "Connections", "Settings"];
 const supportAgentWorkspaceTabs: AgentWorkspaceTab[] = ["Overview", "Chat & Instruct", "Subagents", "Support Tickets", "Saved Instructions", "Tasks", "Reports", "Approvals", "Automations", "Activity History", "Connections", "Settings"];
 const fraudRiskAgentWorkspaceTabs: AgentWorkspaceTab[] = ["Overview", "Chat & Instruct", "Subagents", "Risk Cases", "Review Queue", "Appeals", "Saved Instructions", "Tasks", "Reports", "Risk Rules", "Approvals", "Automations", "Activity History", "Connections", "Settings"];
@@ -2818,6 +2819,7 @@ const creativeProductionAgentWorkspaceTabs: AgentWorkspaceTab[] = ["Overview", "
 const socialMediaAgentWorkspaceTabs: AgentWorkspaceTab[] = ["Overview", "Chat & Instruct", "Publishing Calendar", "Scheduled Posts", "Social Conversations", "Content Performance", "Saved Instructions", "Tasks", "Reports", "Approvals", "Automations", "Activity History", "Connections", "Settings"];
 const performanceMarketingAgentWorkspaceTabs: AgentWorkspaceTab[] = ["Overview", "Chat & Instruct", "Advertising Campaigns", "Audiences", "Budgets", "A/B Tests", "Campaign Approvals", "Saved Instructions", "Tasks", "Reports", "Approvals", "Automations", "Activity History", "Connections", "Settings"];
 const dataAnalystAgentWorkspaceTabs: AgentWorkspaceTab[] = ["Overview", "Chat & Instruct", "Business Dashboard", "Revenue Analytics", "User Analytics", "Marketing Analytics", "Risk Analytics", "Forecasts", "Saved Instructions", "Tasks", "Reports", "Approvals", "Automations", "Activity History", "Connections", "Settings"];
+const technicalOperationsAgentWorkspaceTabs: AgentWorkspaceTab[] = ["Overview", "Chat & Instruct", "Subagents", "System Health", "Incidents", "Deployments", "Failed Jobs", "Security Alerts", "Backups", "Saved Instructions", "Tasks", "Reports", "Approvals", "Automations", "Activity History", "Connections", "Settings"];
 type AgentInstructionRecord = { id: string; title: string; instruction_text: string; scope: string; priority: number; status: string; version: number; target_type: "main_agent" | "subagent"; target_name: string; updated_at: string };
 type InstructionDiscussionMessage = { actor: "admin" | "system"; body: string };
 type AgentInstructionSnapshot = { title?: string; instruction_text?: string; scope?: string; priority?: number; target_type?: "main_agent" | "subagent"; target_name?: string; status?: string };
@@ -2916,7 +2918,8 @@ function AgentWorkspace({ agent, onBack, action }: { agent: AgentDirectoryItem; 
   const isSocialMediaAgent = agent.number === "11";
   const isPerformanceMarketingAgent = agent.number === "12";
   const isDataAnalystAgent = agent.number === "13";
-  const visibleWorkspaceTabs = isSupportTeamLead ? supportAgentWorkspaceTabs : isFraudRiskAgent ? fraudRiskAgentWorkspaceTabs : isComplianceAgent ? complianceAgentWorkspaceTabs : isAdsOperationsAgent ? adsOperationsAgentWorkspaceTabs : isOfferwallAgent ? offerwallAgentWorkspaceTabs : isAffiliateShopAgent ? affiliateShopAgentWorkspaceTabs : isContentManagerAgent ? contentManagerAgentWorkspaceTabs : isCreativeProductionAgent ? creativeProductionAgentWorkspaceTabs : isSocialMediaAgent ? socialMediaAgentWorkspaceTabs : isPerformanceMarketingAgent ? performanceMarketingAgentWorkspaceTabs : isDataAnalystAgent ? dataAnalystAgentWorkspaceTabs : agentWorkspaceTabs;
+  const isTechnicalOperationsAgent = agent.number === "14";
+  const visibleWorkspaceTabs = isSupportTeamLead ? supportAgentWorkspaceTabs : isFraudRiskAgent ? fraudRiskAgentWorkspaceTabs : isComplianceAgent ? complianceAgentWorkspaceTabs : isAdsOperationsAgent ? adsOperationsAgentWorkspaceTabs : isOfferwallAgent ? offerwallAgentWorkspaceTabs : isAffiliateShopAgent ? affiliateShopAgentWorkspaceTabs : isContentManagerAgent ? contentManagerAgentWorkspaceTabs : isCreativeProductionAgent ? creativeProductionAgentWorkspaceTabs : isSocialMediaAgent ? socialMediaAgentWorkspaceTabs : isPerformanceMarketingAgent ? performanceMarketingAgentWorkspaceTabs : isDataAnalystAgent ? dataAnalystAgentWorkspaceTabs : isTechnicalOperationsAgent ? technicalOperationsAgentWorkspaceTabs : agentWorkspaceTabs;
   const agentKey = agent.name.toLowerCase().replace(/&/g, "and").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 
   const loadInstructions = useCallback(async () => {
@@ -3096,6 +3099,19 @@ function AgentWorkspace({ agent, onBack, action }: { agent: AgentDirectoryItem; 
     : tab === "Marketing Analytics" ? <MarketingAnalytics action={action}/>
     : tab === "Risk Analytics" ? <RiskAnalytics action={action}/>
     : tab === "Forecasts" ? <Forecasts action={action}/>
+    : tab === "System Health" ? <SystemHealth action={action}/>
+    : tab === "Incidents" ? <Incidents action={action}/>
+    : tab === "Deployments" ? <Deployments action={action}/>
+    : tab === "Failed Jobs" ? <FailedJobs action={action}/>
+    : tab === "Security Alerts" ? <SecurityAlerts action={action}/>
+    : tab === "Backups" ? <Backups action={action}/>
+    : tab === "Tasks" && isTechnicalOperationsAgent ? <TechnicalTasks/>
+    : tab === "Reports" && isTechnicalOperationsAgent ? <TechnicalReports/>
+    : tab === "Approvals" && isTechnicalOperationsAgent ? <TechnicalApprovals action={action}/>
+    : tab === "Automations" && isTechnicalOperationsAgent ? <TechnicalAutomations action={action}/>
+    : tab === "Activity History" && isTechnicalOperationsAgent ? <TechnicalActivity/>
+    : tab === "Connections" && isTechnicalOperationsAgent ? <TechnicalConnections action={action}/>
+    : tab === "Settings" && isTechnicalOperationsAgent ? <TechnicalSettings/>
     : tab === "Tasks" && isDataAnalystAgent ? <AnalystTasks/>
     : tab === "Reports" && isDataAnalystAgent ? <AnalystReports/>
     : tab === "Approvals" && isDataAnalystAgent ? <AnalystApprovals action={action}/>
