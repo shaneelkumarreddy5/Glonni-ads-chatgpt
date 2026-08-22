@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertTriangle, BadgeIndianRupee, CheckCircle2, Clock3, FileWarning, HandCoins, Link2, ReceiptIndianRupee, Scale, ShieldCheck, WalletCards } from "lucide-react";
+import { AlertTriangle, BadgeIndianRupee, CheckCircle2, Clock3, FileWarning, HandCoins, Link2, ReceiptIndianRupee, Scale, ShieldCheck } from "lucide-react";
 
 type Action = (message: string) => void;
 
